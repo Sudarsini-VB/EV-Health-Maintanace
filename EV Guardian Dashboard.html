@@ -1,0 +1,1804 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>EV Guardian — Fleet Battery Dashboard</title>
+<style>
+  :root {
+    --bg: #F6F7F4;
+    --bg-card: #FFFFFF;
+    --bg-soft: #EEF1EA;
+    --line: #E2E6DC;
+    --text-primary: #1F2A24;
+    --text-secondary: #5B6B5F;
+    --text-tertiary: #8B9A8E;
+
+    --brand: #2F6B5E;
+    --brand-soft: #E6EFE9;
+    --accent: #E08A3C;
+    --accent-soft: #FBEAD9;
+
+    --healthy: #2F9E68;
+    --healthy-soft: #E3F5EA;
+    --moderate: #3F7FBF;
+    --moderate-soft: #E6EEF9;
+    --degraded: #D98C2B;
+    --degraded-soft: #FBEFDC;
+    --critical: #D6553F;
+    --critical-soft: #FBE6E2;
+
+    --radius-sm: 8px;
+    --radius-md: 14px;
+    --radius-lg: 20px;
+    --shadow: 0 1px 2px rgba(31,42,36,0.04), 0 6px 20px rgba(31,42,36,0.06);
+    --font: 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text-primary); font-family: var(--font); }
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-thumb { background: var(--line); border-radius: 4px; }
+
+  #app { display: flex; min-height: 100vh; }
+
+  /* ---------- Sidebar ---------- */
+  .sidebar {
+    width: 230px;
+    flex-shrink: 0;
+    background: var(--bg-card);
+    border-right: 1px solid var(--line);
+    display: flex;
+    flex-direction: column;
+    padding: 22px 16px;
+  }
+  .brand { display: flex; align-items: center; gap: 10px; padding: 0 8px 22px; border-bottom: 1px solid var(--line); margin-bottom: 16px; }
+  .brand-icon {
+    width: 34px; height: 34px; border-radius: 10px; background: var(--brand);
+    display: flex; align-items: center; justify-content: center; color: white; font-size: 17px; flex-shrink: 0;
+  }
+  .brand-name { font-weight: 700; font-size: 15px; line-height: 1.2; }
+  .brand-sub { font-size: 11px; color: var(--text-tertiary); }
+
+  .nav { display: flex; flex-direction: column; gap: 3px; }
+  .nav-item {
+    display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: var(--radius-sm);
+    font-size: 13.5px; font-weight: 500; color: var(--text-secondary); cursor: pointer; transition: all 0.15s;
+    border: none; background: transparent; width: 100%; text-align: left;
+  }
+  .nav-item:hover { background: var(--bg-soft); color: var(--text-primary); }
+  .nav-item.active { background: var(--brand-soft); color: var(--brand); font-weight: 600; }
+  .nav-icon { font-size: 16px; width: 20px; text-align: center; }
+
+  .sidebar-footer { margin-top: auto; padding: 14px 12px 0; border-top: 1px solid var(--line); font-size: 11.5px; color: var(--text-tertiary); }
+  .status-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--healthy); margin-right: 5px; }
+
+  /* ---------- Main ---------- */
+  main { flex: 1; padding: 30px 36px; overflow-y: auto; max-height: 100vh; }
+  .page { display: none; flex-direction: column; gap: 20px; }
+  .page.active { display: flex; }
+
+  h1 { font-size: 24px; font-weight: 700; margin: 0; }
+  .page-sub { font-size: 13.5px; color: var(--text-secondary); margin: 4px 0 0; }
+  .page-header { display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 12px; }
+
+  /* ---------- Cards / Panels ---------- */
+  .card {
+    background: var(--bg-card); border: 1px solid var(--line); border-radius: var(--radius-lg);
+    box-shadow: var(--shadow); padding: 20px;
+  }
+  .card-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+  .card-title { font-size: 14.5px; font-weight: 700; }
+  .card-eyebrow { font-size: 10.5px; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 2px; }
+
+  .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+  .kpi-card { background: var(--bg-card); border: 1px solid var(--line); border-radius: var(--radius-lg); padding: 16px 18px; box-shadow: var(--shadow); }
+  .kpi-label { font-size: 11px; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.05em; display: flex; justify-content: space-between; align-items: center; }
+  .kpi-value { font-size: 28px; font-weight: 800; margin-top: 6px; line-height: 1; }
+  .kpi-sub { font-size: 11.5px; color: var(--text-tertiary); margin-top: 4px; }
+
+  /* ---------- Badges ---------- */
+  .badge {
+    display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px;
+    font-size: 11.5px; font-weight: 700; letter-spacing: 0.02em;
+  }
+  .badge-dot { width: 6px; height: 6px; border-radius: 50%; }
+  .badge-Healthy { background: var(--healthy-soft); color: var(--healthy); }
+  .badge-Healthy .badge-dot { background: var(--healthy); }
+  .badge-Moderate { background: var(--moderate-soft); color: var(--moderate); }
+  .badge-Moderate .badge-dot { background: var(--moderate); }
+  .badge-Degraded { background: var(--degraded-soft); color: var(--degraded); }
+  .badge-Degraded .badge-dot { background: var(--degraded); }
+  .badge-Critical { background: var(--critical-soft); color: var(--critical); }
+  .badge-Critical .badge-dot { background: var(--critical); }
+  .badge-Medium { background: #F1E9F9; color: #7B4FA0; }
+  .badge-Medium .badge-dot { background: #7B4FA0; }
+
+  /* ---------- Grid layouts ---------- */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1.3fr; gap: 16px; }
+  .grid-2-rev { display: grid; grid-template-columns: 1.3fr 1fr; gap: 16px; }
+
+  /* ---------- Table ---------- */
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  th { text-align: left; font-size: 11px; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.04em; font-weight: 600; padding: 0 10px 10px 0; }
+  td { padding: 11px 10px 11px 0; border-top: 1px solid var(--line); }
+  tr.clickable { cursor: pointer; transition: background 0.12s; }
+  tr.clickable:hover td { background: var(--bg-soft); }
+
+  /* ---------- Vehicle grid (cards view) ---------- */
+  .vehicle-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+  .vehicle-card {
+    background: var(--bg-card); border: 1px solid var(--line); border-radius: var(--radius-md); padding: 14px;
+    cursor: pointer; transition: all 0.15s; box-shadow: var(--shadow);
+  }
+  .vehicle-card:hover { transform: translateY(-2px); box-shadow: 0 4px 14px rgba(31,42,36,0.1); }
+  .vehicle-card-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
+  .vehicle-id { font-weight: 700; font-size: 14px; }
+  .vehicle-model { font-size: 12px; color: var(--text-secondary); margin-top: 1px; }
+  .vehicle-stats { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; }
+
+  /* ---------- Battery ring gauge ---------- */
+  .ring-wrap { position: relative; display: inline-flex; align-items: center; justify-content: center; }
+  .ring-label { position: absolute; display: flex; flex-direction: column; align-items: center; }
+  .ring-value { font-weight: 800; line-height: 1; }
+  .ring-unit { font-size: 0.32em; color: var(--text-tertiary); margin-top: 2px; }
+
+  /* ---------- Buttons ---------- */
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px; padding: 10px 16px; border-radius: var(--radius-sm);
+    font-size: 13px; font-weight: 600; border: none; cursor: pointer; transition: all 0.15s; font-family: inherit;
+  }
+  .btn-primary { background: var(--brand); color: white; }
+  .btn-primary:hover { background: #275A4F; }
+  .btn-soft { background: var(--bg-soft); color: var(--text-secondary); }
+  .btn-soft:hover { background: var(--line); }
+  .btn-sm { padding: 6px 11px; font-size: 11.5px; }
+
+  /* ---------- Filters / chips ---------- */
+  .chip-row { display: flex; gap: 6px; flex-wrap: wrap; }
+  .chip {
+    padding: 7px 13px; border-radius: 999px; font-size: 12.5px; font-weight: 600; cursor: pointer;
+    border: 1px solid var(--line); background: var(--bg-card); color: var(--text-secondary); transition: all 0.15s;
+  }
+  .chip.active { background: var(--brand); color: white; border-color: var(--brand); }
+
+  /* ---------- Detail drawer ---------- */
+  .overlay {
+    position: fixed; inset: 0; background: rgba(20,30,24,0.35); display: none; align-items: center; justify-content: center; z-index: 100;
+  }
+  .overlay.active { display: flex; }
+  .drawer {
+    background: var(--bg-card); border-radius: var(--radius-lg); padding: 26px; width: 420px; max-height: 86vh; overflow-y: auto;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+  }
+  .drawer-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 18px; }
+  .drawer-close { background: var(--bg-soft); border: none; border-radius: 8px; width: 30px; height: 30px; cursor: pointer; font-size: 15px; color: var(--text-secondary); }
+
+  .detail-row { display: flex; justify-content: space-between; padding: 9px 0; border-bottom: 1px solid var(--line); font-size: 13.5px; }
+  .detail-row span:first-child { color: var(--text-secondary); }
+  .detail-row span:last-child { font-weight: 600; }
+
+  /* ---------- Alerts list ---------- */
+  .alert-item {
+    display: flex; justify-content: space-between; align-items: flex-start; gap: 12px;
+    padding: 14px; border-radius: var(--radius-md); background: var(--bg-soft); margin-bottom: 10px;
+  }
+  .alert-left { display: flex; flex-direction: column; gap: 5px; }
+  .alert-msg { font-size: 13.5px; color: var(--text-primary); }
+  .alert-meta { font-size: 11.5px; color: var(--text-tertiary); }
+
+  /* ---------- Predict page ---------- */
+  .slider-row { margin-bottom: 18px; }
+  .slider-label { display: flex; justify-content: space-between; font-size: 13px; color: var(--text-secondary); margin-bottom: 7px; }
+  .slider-value { font-weight: 700; color: var(--text-primary); }
+  input[type=range] { width: 100%; accent-color: var(--accent); height: 5px; }
+  .toggle-row { display: flex; align-items: center; gap: 9px; font-size: 13px; color: var(--text-secondary); margin: 6px 0 20px; }
+
+  .result-empty { text-align: center; color: var(--text-tertiary); font-size: 13.5px; padding: 50px 10px; }
+  .result-block { display: flex; flex-direction: column; align-items: center; gap: 16px; }
+  .stat-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; }
+  .stat-box { background: var(--bg-soft); border-radius: var(--radius-md); padding: 12px 14px; text-align: center; }
+  .stat-box-label { font-size: 10.5px; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.04em; }
+  .stat-box-value { font-size: 19px; font-weight: 800; color: var(--brand); margin-top: 3px; }
+  .recommendation-box { background: var(--brand-soft); border-radius: var(--radius-md); padding: 13px; font-size: 13.5px; color: var(--text-primary); line-height: 1.5; width: 100%; }
+  .anomaly-box { background: var(--critical-soft); border-radius: var(--radius-md); padding: 13px; font-size: 13px; color: var(--text-primary); line-height: 1.5; width: 100%; display: flex; gap: 9px; }
+
+  /* ---------- Region bars ---------- */
+  .region-bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 11px; }
+  .region-bar-label { width: 90px; font-size: 12.5px; color: var(--text-secondary); flex-shrink: 0; }
+  .region-bar-track { flex: 1; height: 10px; background: var(--bg-soft); border-radius: 6px; overflow: hidden; }
+  .region-bar-fill { height: 100%; border-radius: 6px; background: var(--moderate); }
+  .region-bar-value { width: 50px; text-align: right; font-size: 12.5px; font-weight: 700; flex-shrink: 0; }
+
+  /* ---------- Responsive ---------- */
+  @media (max-width: 980px) {
+    .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+    .grid-2, .grid-2-rev { grid-template-columns: 1fr; }
+  }
+
+  @media (max-width: 720px) {
+    #app { flex-direction: column; }
+    .sidebar { width: 100%; flex-direction: row; align-items: center; padding: 12px 14px; overflow-x: auto; }
+    .brand { border-bottom: none; border-right: 1px solid var(--line); margin-bottom: 0; padding: 0 14px 0 0; flex-shrink: 0; }
+    .nav { flex-direction: row; padding-left: 10px; }
+    .nav-item { white-space: nowrap; }
+    .sidebar-footer { display: none; }
+    main { padding: 18px 16px; }
+    .kpi-grid { grid-template-columns: 1fr 1fr; }
+    h1 { font-size: 20px; }
+    .vehicle-grid { grid-template-columns: 1fr 1fr; }
+    .drawer { width: 92vw; }
+  }
+
+  @media (max-width: 460px) {
+    .kpi-grid { grid-template-columns: 1fr; }
+    .vehicle-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div id="app">
+
+  <!-- ============ SIDEBAR ============ -->
+  <nav class="sidebar">
+    <div class="brand">
+      <div class="brand-icon">⚡</div>
+      <div>
+        <div class="brand-name">EV Guardian</div>
+        <div class="brand-sub">Fleet Battery Dashboard</div>
+      </div>
+    </div>
+    <div class="nav">
+      <button class="nav-item active" data-page="overview"><span class="nav-icon">🏠</span> Overview</button>
+      <button class="nav-item" data-page="vehicles"><span class="nav-icon">🚗</span> Vehicles</button>
+      <button class="nav-item" data-page="alerts"><span class="nav-icon">🔔</span> Alerts</button>
+      <button class="nav-item" data-page="analytics"><span class="nav-icon">📊</span> Analytics</button>
+      <button class="nav-item" data-page="predict"><span class="nav-icon">🔮</span> Predict</button>
+      <button class="nav-item" data-page="integrate"><span class="nav-icon">🔌</span> Connect to a Real EV</button>
+    </div>
+    <div class="sidebar-footer">
+      <span class="status-dot"></span>Sample data loaded<br>
+      60 vehicles · ready to explore
+    </div>
+  </nav>
+
+  <!-- ============ MAIN CONTENT ============ -->
+  <main>
+
+    <!-- ---------- OVERVIEW PAGE ---------- -->
+    <section class="page active" id="page-overview">
+      <div>
+        <h1>Fleet Overview</h1>
+        <p class="page-sub">A snapshot of every vehicle's battery health, updated from the latest readings.</p>
+      </div>
+
+      <div class="kpi-grid" id="kpi-grid"></div>
+
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-head">
+            <div><div class="card-eyebrow">Distribution</div><div class="card-title">Fleet health breakdown</div></div>
+          </div>
+          <div id="health-donut-wrap" style="display:flex; align-items:center; gap:22px;"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <div><div class="card-eyebrow">Climate impact</div><div class="card-title">Average capacity by region</div></div>
+          </div>
+          <div id="region-bars"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <div><div class="card-eyebrow">Priority queue</div><div class="card-title">Vehicles needing attention</div></div>
+          <button class="btn btn-soft btn-sm" onclick="goToPage('vehicles')">View all →</button>
+        </div>
+        <table>
+          <thead><tr><th>Vehicle</th><th>Model</th><th>Region</th><th>Capacity</th><th>Est. life left</th><th>Status</th></tr></thead>
+          <tbody id="priority-table-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ---------- VEHICLES PAGE ---------- -->
+    <section class="page" id="page-vehicles">
+      <div class="page-header">
+        <div>
+          <h1>Vehicles</h1>
+          <p class="page-sub">Click any vehicle to see full battery detail.</p>
+        </div>
+      </div>
+      <div class="chip-row" id="vehicle-filter-chips"></div>
+      <div class="vehicle-grid" id="vehicle-grid"></div>
+    </section>
+
+    <!-- ---------- ALERTS PAGE ---------- -->
+    <section class="page" id="page-alerts">
+      <div>
+        <h1>Alerts</h1>
+        <p class="page-sub">Automatically generated whenever a vehicle's battery looks abnormal or is wearing out faster than expected.</p>
+      </div>
+      <div class="card">
+        <div class="card-head">
+          <div><div class="card-eyebrow" id="alert-count-label">Open issues</div><div class="card-title">Alert feed</div></div>
+        </div>
+        <div id="alerts-list"></div>
+      </div>
+    </section>
+
+    <!-- ---------- ANALYTICS PAGE ---------- -->
+    <section class="page" id="page-analytics">
+      <div>
+        <h1>Fleet Analytics</h1>
+        <p class="page-sub">Compare vehicles to spot patterns across regions, models, and usage.</p>
+      </div>
+      <div class="grid-2-rev">
+        <div class="card">
+          <div class="card-head"><div><div class="card-eyebrow">Ranking</div><div class="card-title">Lowest battery health (priority)</div></div></div>
+          <table><thead><tr><th>Vehicle</th><th>Capacity</th><th>Status</th></tr></thead><tbody id="worst-table"></tbody></table>
+        </div>
+        <div class="card">
+          <div class="card-head"><div><div class="card-eyebrow">Ranking</div><div class="card-title">Highest battery health</div></div></div>
+          <table><thead><tr><th>Vehicle</th><th>Capacity</th><th>Status</th></tr></thead><tbody id="best-table"></tbody></table>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-head"><div><div class="card-eyebrow">By model</div><div class="card-title">Average capacity per vehicle model</div></div></div>
+        <div id="model-bars"></div>
+      </div>
+    </section>
+
+    <!-- ---------- PREDICT PAGE ---------- -->
+    <section class="page" id="page-predict">
+      <div>
+        <h1>Live Battery Predictor</h1>
+        <p class="page-sub">Move the sliders to describe a battery reading and see what the model thinks of it — instantly, no internet needed.</p>
+      </div>
+      <div class="grid-2-rev">
+        <div class="card">
+          <div class="card-head"><div><div class="card-eyebrow">Simulated reading</div><div class="card-title">Battery sensor values</div></div></div>
+          <div id="predict-sliders"></div>
+          <div class="toggle-row">
+            <input type="checkbox" id="fastChargeToggle" onchange="runPrediction()">
+            <label for="fastChargeToggle">This reading includes a fast-charge event</label>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-head"><div><div class="card-eyebrow">Result</div><div class="card-title">Model's assessment</div></div></div>
+          <div id="predict-result"><div class="result-empty">Move a slider to see the model respond.</div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ---------- INTEGRATE PAGE ---------- -->
+    <section class="page" id="page-integrate">
+      <div>
+        <h1>Connecting This to a Real EV</h1>
+        <p class="page-sub">What this dashboard is doing today, and what would need to change to run on a real vehicle's data.</p>
+      </div>
+
+      <div class="card">
+        <div class="card-title" style="margin-bottom:10px;">What you're looking at right now</div>
+        <p style="font-size:13.5px; color:var(--text-secondary); line-height:1.6; margin:0;">
+          This dashboard is a self-contained demo. The 60 vehicles, their battery readings, and the alerts are all sample data, generated once and saved inside this page — there is no live connection to any car right now. The "Predict" tab runs a simplified version of the scoring logic directly in your browser using JavaScript, just so you can see how a reading would be judged.
+        </p>
+      </div>
+
+      <div class="card">
+        <div class="card-title" style="margin-bottom:14px;">How a real EV would feed this dashboard</div>
+        <div id="integration-steps"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title" style="margin-bottom:10px;">The short version</div>
+        <p style="font-size:13.5px; color:var(--text-secondary); line-height:1.6; margin:0;">
+          A real car's Battery Management System (BMS) already measures voltage, current, temperature, and charge cycles continuously. That data needs to reach a server somewhere — through the car's onboard internet connection, a fleet telematics box, or a manufacturer's cloud platform. Once it lands in a database, the same kind of health-scoring logic shown in the Predict tab (trained properly on real historical data, not the simplified version here) can run on every new reading and produce the same kind of dashboard you're looking at now, just with real vehicles instead of samples.
+        </p>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- ============ VEHICLE DETAIL DRAWER ============ -->
+<div class="overlay" id="detail-overlay" onclick="closeDrawerOnBackdrop(event)">
+  <div class="drawer" id="detail-drawer"></div>
+</div>
+
+<script id="fleet-data" type="application/json">
+[
+  {
+    "id": "EV-001",
+    "model": "Tata Tigor EV",
+    "region": "Hyderabad",
+    "owner": "R. Karthik",
+    "capacityKwh": 50.0,
+    "cycle": 189,
+    "capacityPct": 74.8,
+    "health": "Degraded",
+    "voltage": 262.8,
+    "temperature": 36.2,
+    "internalResistance": 0.1326,
+    "odometerKm": 11295,
+    "rulCycles": 36,
+    "socPct": 60.0
+  },
+  {
+    "id": "EV-002",
+    "model": "Mahindra XUV400",
+    "region": "Chennai",
+    "owner": "S. Priya",
+    "capacityKwh": 30.2,
+    "cycle": 110,
+    "capacityPct": 88.4,
+    "health": "Moderate",
+    "voltage": 309.7,
+    "temperature": 30.3,
+    "internalResistance": 0.1065,
+    "odometerKm": 4499,
+    "rulCycles": 176,
+    "socPct": 81.0
+  },
+  {
+    "id": "EV-003",
+    "model": "Mahindra XUV400",
+    "region": "Hyderabad",
+    "owner": "M. Arun",
+    "capacityKwh": 39.0,
+    "cycle": 110,
+    "capacityPct": 87.9,
+    "health": "Moderate",
+    "voltage": 310.0,
+    "temperature": 33.5,
+    "internalResistance": 0.1071,
+    "odometerKm": 5292,
+    "rulCycles": 164,
+    "socPct": 61.0
+  },
+  {
+    "id": "EV-004",
+    "model": "Mahindra XUV400",
+    "region": "Pune",
+    "owner": "V. Lakshmi",
+    "capacityKwh": 39.0,
+    "cycle": 254,
+    "capacityPct": 77.7,
+    "health": "Degraded",
+    "voltage": 274.1,
+    "temperature": 29.5,
+    "internalResistance": 0.1254,
+    "odometerKm": 11409,
+    "rulCycles": 87,
+    "socPct": 49.0
+  },
+  {
+    "id": "EV-005",
+    "model": "MG ZS EV",
+    "region": "Madurai",
+    "owner": "K. Suresh",
+    "capacityKwh": 50.0,
+    "cycle": 106,
+    "capacityPct": 88.9,
+    "health": "Moderate",
+    "voltage": 310.8,
+    "temperature": 18.8,
+    "internalResistance": 0.1025,
+    "odometerKm": 3849,
+    "rulCycles": 180,
+    "socPct": 58.0
+  },
+  {
+    "id": "EV-006",
+    "model": "Tata Nexon EV",
+    "region": "Coimbatore",
+    "owner": "A. Divya",
+    "capacityKwh": 30.2,
+    "cycle": 60,
+    "capacityPct": 92.7,
+    "health": "Healthy",
+    "voltage": 325.5,
+    "temperature": 34.2,
+    "internalResistance": 0.0956,
+    "odometerKm": 2385,
+    "rulCycles": 185,
+    "socPct": 72.0
+  },
+  {
+    "id": "EV-007",
+    "model": "Hyundai Kona",
+    "region": "Hyderabad",
+    "owner": "R. Karthik",
+    "capacityKwh": 50.0,
+    "cycle": 43,
+    "capacityPct": 93.0,
+    "health": "Healthy",
+    "voltage": 326.9,
+    "temperature": 31.4,
+    "internalResistance": 0.0932,
+    "odometerKm": 2382,
+    "rulCycles": 142,
+    "socPct": 87.0
+  },
+  {
+    "id": "EV-008",
+    "model": "Tata Nexon EV",
+    "region": "Bengaluru",
+    "owner": "S. Priya",
+    "capacityKwh": 50.0,
+    "cycle": 32,
+    "capacityPct": 96.4,
+    "health": "Healthy",
+    "voltage": 338.9,
+    "temperature": 31.2,
+    "internalResistance": 0.0874,
+    "odometerKm": 1699,
+    "rulCycles": 232,
+    "socPct": 41.0
+  },
+  {
+    "id": "EV-009",
+    "model": "Mahindra XUV400",
+    "region": "Bengaluru",
+    "owner": "M. Arun",
+    "capacityKwh": 34.5,
+    "cycle": 55,
+    "capacityPct": 84.6,
+    "health": "Moderate",
+    "voltage": 298.0,
+    "temperature": 41.8,
+    "internalResistance": 0.1139,
+    "odometerKm": 2119,
+    "rulCycles": 52,
+    "socPct": 75.0
+  },
+  {
+    "id": "EV-010",
+    "model": "Tata Nexon EV",
+    "region": "Madurai",
+    "owner": "V. Lakshmi",
+    "capacityKwh": 39.0,
+    "cycle": 208,
+    "capacityPct": 55,
+    "health": "Critical",
+    "voltage": 192.5,
+    "temperature": 40.9,
+    "internalResistance": 0.1749,
+    "odometerKm": 9794,
+    "rulCycles": 0,
+    "socPct": 87.0
+  },
+  {
+    "id": "EV-011",
+    "model": "Mahindra XUV400",
+    "region": "Bengaluru",
+    "owner": "K. Suresh",
+    "capacityKwh": 39.0,
+    "cycle": 234,
+    "capacityPct": 82.5,
+    "health": "Moderate",
+    "voltage": 291.5,
+    "temperature": 26.1,
+    "internalResistance": 0.112,
+    "odometerKm": 11403,
+    "rulCycles": 166,
+    "socPct": 54.0
+  },
+  {
+    "id": "EV-012",
+    "model": "Mahindra XUV400",
+    "region": "Bengaluru",
+    "owner": "A. Divya",
+    "capacityKwh": 39.0,
+    "cycle": 189,
+    "capacityPct": 64.7,
+    "health": "Critical",
+    "voltage": 227.3,
+    "temperature": 39.9,
+    "internalResistance": 0.155,
+    "odometerKm": 10150,
+    "rulCycles": 0,
+    "socPct": 49.0
+  },
+  {
+    "id": "EV-013",
+    "model": "Hyundai Kona",
+    "region": "Bengaluru",
+    "owner": "R. Karthik",
+    "capacityKwh": 50.0,
+    "cycle": 41,
+    "capacityPct": 96.2,
+    "health": "Healthy",
+    "voltage": 335.0,
+    "temperature": 24.0,
+    "internalResistance": 0.0891,
+    "odometerKm": 2049,
+    "rulCycles": 279,
+    "socPct": 46.0
+  },
+  {
+    "id": "EV-014",
+    "model": "Tata Tigor EV",
+    "region": "Pune",
+    "owner": "S. Priya",
+    "capacityKwh": 34.5,
+    "cycle": 184,
+    "capacityPct": 55,
+    "health": "Critical",
+    "voltage": 194.8,
+    "temperature": 44.3,
+    "internalResistance": 0.1772,
+    "odometerKm": 7968,
+    "rulCycles": 0,
+    "socPct": 91.0
+  },
+  {
+    "id": "EV-015",
+    "model": "Hyundai Kona",
+    "region": "Bengaluru",
+    "owner": "M. Arun",
+    "capacityKwh": 50.0,
+    "cycle": 245,
+    "capacityPct": 68.9,
+    "health": "Critical",
+    "voltage": 238.8,
+    "temperature": 28.5,
+    "internalResistance": 0.1458,
+    "odometerKm": 8664,
+    "rulCycles": 0,
+    "socPct": 50.0
+  },
+  {
+    "id": "EV-016",
+    "model": "Tata Tigor EV",
+    "region": "Bengaluru",
+    "owner": "V. Lakshmi",
+    "capacityKwh": 39.0,
+    "cycle": 74,
+    "capacityPct": 93.3,
+    "health": "Healthy",
+    "voltage": 329.6,
+    "temperature": 33.6,
+    "internalResistance": 0.095,
+    "odometerKm": 3344,
+    "rulCycles": 256,
+    "socPct": 66.0
+  },
+  {
+    "id": "EV-017",
+    "model": "Tata Nexon EV",
+    "region": "Bengaluru",
+    "owner": "K. Suresh",
+    "capacityKwh": 30.2,
+    "cycle": 199,
+    "capacityPct": 78.1,
+    "health": "Degraded",
+    "voltage": 270.8,
+    "temperature": 31.3,
+    "internalResistance": 0.1276,
+    "odometerKm": 8094,
+    "rulCycles": 74,
+    "socPct": 80.0
+  },
+  {
+    "id": "EV-018",
+    "model": "Tata Tigor EV",
+    "region": "Madurai",
+    "owner": "A. Divya",
+    "capacityKwh": 30.2,
+    "cycle": 91,
+    "capacityPct": 92.2,
+    "health": "Healthy",
+    "voltage": 321.3,
+    "temperature": 22.4,
+    "internalResistance": 0.0906,
+    "odometerKm": 3443,
+    "rulCycles": 258,
+    "socPct": 45.0
+  },
+  {
+    "id": "EV-019",
+    "model": "Hyundai Kona",
+    "region": "Madurai",
+    "owner": "R. Karthik",
+    "capacityKwh": 39.0,
+    "cycle": 198,
+    "capacityPct": 87.2,
+    "health": "Moderate",
+    "voltage": 302.7,
+    "temperature": 23.0,
+    "internalResistance": 0.1092,
+    "odometerKm": 11875,
+    "rulCycles": 266,
+    "socPct": 48.0
+  },
+  {
+    "id": "EV-020",
+    "model": "MG ZS EV",
+    "region": "Madurai",
+    "owner": "S. Priya",
+    "capacityKwh": 50.0,
+    "cycle": 174,
+    "capacityPct": 73.9,
+    "health": "Degraded",
+    "voltage": 258.0,
+    "temperature": 33.8,
+    "internalResistance": 0.1332,
+    "odometerKm": 8105,
+    "rulCycles": 26,
+    "socPct": 64.0
+  },
+  {
+    "id": "EV-021",
+    "model": "Tata Tigor EV",
+    "region": "Coimbatore",
+    "owner": "M. Arun",
+    "capacityKwh": 50.0,
+    "cycle": 117,
+    "capacityPct": 84.6,
+    "health": "Moderate",
+    "voltage": 294.1,
+    "temperature": 36.0,
+    "internalResistance": 0.112,
+    "odometerKm": 5521,
+    "rulCycles": 111,
+    "socPct": 73.0
+  },
+  {
+    "id": "EV-022",
+    "model": "MG ZS EV",
+    "region": "Coimbatore",
+    "owner": "V. Lakshmi",
+    "capacityKwh": 50.0,
+    "cycle": 23,
+    "capacityPct": 95.9,
+    "health": "Healthy",
+    "voltage": 337.4,
+    "temperature": 39.2,
+    "internalResistance": 0.0894,
+    "odometerKm": 1316,
+    "rulCycles": 147,
+    "socPct": 77.0
+  },
+  {
+    "id": "EV-023",
+    "model": "Tata Tigor EV",
+    "region": "Coimbatore",
+    "owner": "K. Suresh",
+    "capacityKwh": 39.0,
+    "cycle": 170,
+    "capacityPct": 83.0,
+    "health": "Moderate",
+    "voltage": 293.1,
+    "temperature": 33.9,
+    "internalResistance": 0.1123,
+    "odometerKm": 7592,
+    "rulCycles": 129,
+    "socPct": 60.0
+  },
+  {
+    "id": "EV-024",
+    "model": "Tata Tigor EV",
+    "region": "Chennai",
+    "owner": "A. Divya",
+    "capacityKwh": 30.2,
+    "cycle": 239,
+    "capacityPct": 63.2,
+    "health": "Critical",
+    "voltage": 219.8,
+    "temperature": 37.1,
+    "internalResistance": 0.1545,
+    "odometerKm": 11054,
+    "rulCycles": 0,
+    "socPct": 55.0
+  },
+  {
+    "id": "EV-025",
+    "model": "Mahindra XUV400",
+    "region": "Madurai",
+    "owner": "R. Karthik",
+    "capacityKwh": 30.2,
+    "cycle": 33,
+    "capacityPct": 97.5,
+    "health": "Healthy",
+    "voltage": 341.4,
+    "temperature": 29.1,
+    "internalResistance": 0.0831,
+    "odometerKm": 1670,
+    "rulCycles": 362,
+    "socPct": 73.0
+  },
+  {
+    "id": "EV-026",
+    "model": "Hyundai Kona",
+    "region": "Hyderabad",
+    "owner": "S. Priya",
+    "capacityKwh": 50.0,
+    "cycle": 89,
+    "capacityPct": 82.0,
+    "health": "Moderate",
+    "voltage": 285.4,
+    "temperature": 38.7,
+    "internalResistance": 0.1166,
+    "odometerKm": 4961,
+    "rulCycles": 60,
+    "socPct": 56.0
+  },
+  {
+    "id": "EV-027",
+    "model": "Tata Nexon EV",
+    "region": "Hyderabad",
+    "owner": "M. Arun",
+    "capacityKwh": 30.2,
+    "cycle": 60,
+    "capacityPct": 89.6,
+    "health": "Moderate",
+    "voltage": 313.6,
+    "temperature": 43.8,
+    "internalResistance": 0.1034,
+    "odometerKm": 2119,
+    "rulCycles": 113,
+    "socPct": 87.0
+  },
+  {
+    "id": "EV-028",
+    "model": "MG ZS EV",
+    "region": "Coimbatore",
+    "owner": "V. Lakshmi",
+    "capacityKwh": 30.2,
+    "cycle": 249,
+    "capacityPct": 76.2,
+    "health": "Degraded",
+    "voltage": 268.0,
+    "temperature": 26.5,
+    "internalResistance": 0.1298,
+    "odometerKm": 12822,
+    "rulCycles": 65,
+    "socPct": 43.0
+  },
+  {
+    "id": "EV-029",
+    "model": "Hyundai Kona",
+    "region": "Bengaluru",
+    "owner": "K. Suresh",
+    "capacityKwh": 34.5,
+    "cycle": 184,
+    "capacityPct": 62.7,
+    "health": "Critical",
+    "voltage": 221.8,
+    "temperature": 35.3,
+    "internalResistance": 0.1578,
+    "odometerKm": 9111,
+    "rulCycles": 0,
+    "socPct": 58.0
+  },
+  {
+    "id": "EV-030",
+    "model": "Mahindra XUV400",
+    "region": "Coimbatore",
+    "owner": "A. Divya",
+    "capacityKwh": 39.0,
+    "cycle": 36,
+    "capacityPct": 96.9,
+    "health": "Healthy",
+    "voltage": 338.5,
+    "temperature": 30.2,
+    "internalResistance": 0.0849,
+    "odometerKm": 1929,
+    "rulCycles": 312,
+    "socPct": 76.0
+  },
+  {
+    "id": "EV-031",
+    "model": "Tata Nexon EV",
+    "region": "Pune",
+    "owner": "R. Karthik",
+    "capacityKwh": 30.2,
+    "cycle": 25,
+    "capacityPct": 97.1,
+    "health": "Healthy",
+    "voltage": 339.9,
+    "temperature": 36.6,
+    "internalResistance": 0.0873,
+    "odometerKm": 1311,
+    "rulCycles": 236,
+    "socPct": 67.0
+  },
+  {
+    "id": "EV-032",
+    "model": "Hyundai Kona",
+    "region": "Hyderabad",
+    "owner": "S. Priya",
+    "capacityKwh": 30.2,
+    "cycle": 56,
+    "capacityPct": 94.5,
+    "health": "Healthy",
+    "voltage": 332.5,
+    "temperature": 30.3,
+    "internalResistance": 0.0882,
+    "odometerKm": 3305,
+    "rulCycles": 249,
+    "socPct": 65.0
+  },
+  {
+    "id": "EV-033",
+    "model": "Mahindra XUV400",
+    "region": "Madurai",
+    "owner": "M. Arun",
+    "capacityKwh": 34.5,
+    "cycle": 124,
+    "capacityPct": 72.5,
+    "health": "Degraded",
+    "voltage": 257.2,
+    "temperature": 36.1,
+    "internalResistance": 0.1386,
+    "odometerKm": 6910,
+    "rulCycles": 11,
+    "socPct": 62.0
+  },
+  {
+    "id": "EV-034",
+    "model": "MG ZS EV",
+    "region": "Bengaluru",
+    "owner": "V. Lakshmi",
+    "capacityKwh": 30.2,
+    "cycle": 21,
+    "capacityPct": 98.8,
+    "health": "Healthy",
+    "voltage": 347.4,
+    "temperature": 15,
+    "internalResistance": 0.0854,
+    "odometerKm": 942,
+    "rulCycles": 517,
+    "socPct": 51.0
+  },
+  {
+    "id": "EV-035",
+    "model": "Tata Nexon EV",
+    "region": "Chennai",
+    "owner": "K. Suresh",
+    "capacityKwh": 30.2,
+    "cycle": 175,
+    "capacityPct": 65.6,
+    "health": "Critical",
+    "voltage": 227.6,
+    "temperature": 39.1,
+    "internalResistance": 0.1558,
+    "odometerKm": 8893,
+    "rulCycles": 0,
+    "socPct": 94.0
+  },
+  {
+    "id": "EV-036",
+    "model": "Mahindra XUV400",
+    "region": "Pune",
+    "owner": "A. Divya",
+    "capacityKwh": 34.5,
+    "cycle": 80,
+    "capacityPct": 90.1,
+    "health": "Healthy",
+    "voltage": 314.8,
+    "temperature": 28.5,
+    "internalResistance": 0.1009,
+    "odometerKm": 4445,
+    "rulCycles": 163,
+    "socPct": 48.0
+  },
+  {
+    "id": "EV-037",
+    "model": "Tata Tigor EV",
+    "region": "Madurai",
+    "owner": "R. Karthik",
+    "capacityKwh": 39.0,
+    "cycle": 245,
+    "capacityPct": 84.6,
+    "health": "Moderate",
+    "voltage": 295.5,
+    "temperature": 23.9,
+    "internalResistance": 0.1125,
+    "odometerKm": 10169,
+    "rulCycles": 231,
+    "socPct": 46.0
+  },
+  {
+    "id": "EV-038",
+    "model": "Tata Tigor EV",
+    "region": "Madurai",
+    "owner": "S. Priya",
+    "capacityKwh": 39.0,
+    "cycle": 230,
+    "capacityPct": 72.0,
+    "health": "Degraded",
+    "voltage": 252.2,
+    "temperature": 28.8,
+    "internalResistance": 0.1394,
+    "odometerKm": 11443,
+    "rulCycles": 17,
+    "socPct": 53.0
+  },
+  {
+    "id": "EV-039",
+    "model": "MG ZS EV",
+    "region": "Pune",
+    "owner": "M. Arun",
+    "capacityKwh": 39.0,
+    "cycle": 173,
+    "capacityPct": 89.0,
+    "health": "Moderate",
+    "voltage": 311.7,
+    "temperature": 25.1,
+    "internalResistance": 0.1019,
+    "odometerKm": 8463,
+    "rulCycles": 300,
+    "socPct": 60.0
+  },
+  {
+    "id": "EV-040",
+    "model": "Tata Nexon EV",
+    "region": "Bengaluru",
+    "owner": "V. Lakshmi",
+    "capacityKwh": 30.2,
+    "cycle": 174,
+    "capacityPct": 70.2,
+    "health": "Degraded",
+    "voltage": 245.6,
+    "temperature": 38.8,
+    "internalResistance": 0.1423,
+    "odometerKm": 7948,
+    "rulCycles": 1,
+    "socPct": 41.0
+  },
+  {
+    "id": "EV-041",
+    "model": "Tata Tigor EV",
+    "region": "Pune",
+    "owner": "K. Suresh",
+    "capacityKwh": 39.0,
+    "cycle": 166,
+    "capacityPct": 76.9,
+    "health": "Degraded",
+    "voltage": 269.1,
+    "temperature": 35.3,
+    "internalResistance": 0.1273,
+    "odometerKm": 6226,
+    "rulCycles": 49,
+    "socPct": 80.0
+  },
+  {
+    "id": "EV-042",
+    "model": "Mahindra XUV400",
+    "region": "Chennai",
+    "owner": "A. Divya",
+    "capacityKwh": 34.5,
+    "cycle": 157,
+    "capacityPct": 84.1,
+    "health": "Moderate",
+    "voltage": 298.6,
+    "temperature": 27.9,
+    "internalResistance": 0.1128,
+    "odometerKm": 8705,
+    "rulCycles": 140,
+    "socPct": 77.0
+  },
+  {
+    "id": "EV-043",
+    "model": "MG ZS EV",
+    "region": "Madurai",
+    "owner": "R. Karthik",
+    "capacityKwh": 50.0,
+    "cycle": 134,
+    "capacityPct": 87.8,
+    "health": "Moderate",
+    "voltage": 305.8,
+    "temperature": 26.7,
+    "internalResistance": 0.1059,
+    "odometerKm": 5621,
+    "rulCycles": 195,
+    "socPct": 88.0
+  },
+  {
+    "id": "EV-044",
+    "model": "MG ZS EV",
+    "region": "Hyderabad",
+    "owner": "S. Priya",
+    "capacityKwh": 50.0,
+    "cycle": 34,
+    "capacityPct": 96.4,
+    "health": "Healthy",
+    "voltage": 336.8,
+    "temperature": 32.0,
+    "internalResistance": 0.0875,
+    "odometerKm": 1819,
+    "rulCycles": 248,
+    "socPct": 62.0
+  },
+  {
+    "id": "EV-045",
+    "model": "Tata Nexon EV",
+    "region": "Chennai",
+    "owner": "M. Arun",
+    "capacityKwh": 30.2,
+    "cycle": 243,
+    "capacityPct": 82.3,
+    "health": "Moderate",
+    "voltage": 286.2,
+    "temperature": 23.4,
+    "internalResistance": 0.1154,
+    "odometerKm": 12231,
+    "rulCycles": 169,
+    "socPct": 81.0
+  },
+  {
+    "id": "EV-046",
+    "model": "MG ZS EV",
+    "region": "Bengaluru",
+    "owner": "V. Lakshmi",
+    "capacityKwh": 39.0,
+    "cycle": 62,
+    "capacityPct": 83.7,
+    "health": "Moderate",
+    "voltage": 293.9,
+    "temperature": 45.0,
+    "internalResistance": 0.117,
+    "odometerKm": 3550,
+    "rulCycles": 52,
+    "socPct": 68.0
+  },
+  {
+    "id": "EV-047",
+    "model": "Tata Tigor EV",
+    "region": "Chennai",
+    "owner": "K. Suresh",
+    "capacityKwh": 39.0,
+    "cycle": 183,
+    "capacityPct": 80.5,
+    "health": "Moderate",
+    "voltage": 281.1,
+    "temperature": 34.2,
+    "internalResistance": 0.1211,
+    "odometerKm": 10728,
+    "rulCycles": 98,
+    "socPct": 84.0
+  },
+  {
+    "id": "EV-048",
+    "model": "Mahindra XUV400",
+    "region": "Pune",
+    "owner": "A. Divya",
+    "capacityKwh": 30.2,
+    "cycle": 156,
+    "capacityPct": 68.2,
+    "health": "Critical",
+    "voltage": 238.1,
+    "temperature": 40.3,
+    "internalResistance": 0.1493,
+    "odometerKm": 6010,
+    "rulCycles": 0,
+    "socPct": 86.0
+  },
+  {
+    "id": "EV-049",
+    "model": "Tata Tigor EV",
+    "region": "Pune",
+    "owner": "R. Karthik",
+    "capacityKwh": 50.0,
+    "cycle": 259,
+    "capacityPct": 84.5,
+    "health": "Moderate",
+    "voltage": 297.0,
+    "temperature": 30.2,
+    "internalResistance": 0.1124,
+    "odometerKm": 11716,
+    "rulCycles": 241,
+    "socPct": 45.0
+  },
+  {
+    "id": "EV-050",
+    "model": "Tata Tigor EV",
+    "region": "Madurai",
+    "owner": "S. Priya",
+    "capacityKwh": 34.5,
+    "cycle": 183,
+    "capacityPct": 80.2,
+    "health": "Moderate",
+    "voltage": 281.1,
+    "temperature": 37.1,
+    "internalResistance": 0.1207,
+    "odometerKm": 9941,
+    "rulCycles": 94,
+    "socPct": 73.0
+  },
+  {
+    "id": "EV-051",
+    "model": "Tata Nexon EV",
+    "region": "Madurai",
+    "owner": "M. Arun",
+    "capacityKwh": 39.0,
+    "cycle": 64,
+    "capacityPct": 93.4,
+    "health": "Healthy",
+    "voltage": 326.3,
+    "temperature": 28.2,
+    "internalResistance": 0.0927,
+    "odometerKm": 3636,
+    "rulCycles": 229,
+    "socPct": 66.0
+  },
+  {
+    "id": "EV-052",
+    "model": "Mahindra XUV400",
+    "region": "Madurai",
+    "owner": "V. Lakshmi",
+    "capacityKwh": 50.0,
+    "cycle": 182,
+    "capacityPct": 66.3,
+    "health": "Critical",
+    "voltage": 231.6,
+    "temperature": 38.8,
+    "internalResistance": 0.153,
+    "odometerKm": 9010,
+    "rulCycles": 0,
+    "socPct": 47.0
+  },
+  {
+    "id": "EV-053",
+    "model": "Mahindra XUV400",
+    "region": "Hyderabad",
+    "owner": "K. Suresh",
+    "capacityKwh": 30.2,
+    "cycle": 167,
+    "capacityPct": 88.1,
+    "health": "Moderate",
+    "voltage": 310.0,
+    "temperature": 25.6,
+    "internalResistance": 0.103,
+    "odometerKm": 8170,
+    "rulCycles": 254,
+    "socPct": 88.0
+  },
+  {
+    "id": "EV-054",
+    "model": "MG ZS EV",
+    "region": "Coimbatore",
+    "owner": "A. Divya",
+    "capacityKwh": 39.0,
+    "cycle": 170,
+    "capacityPct": 87.5,
+    "health": "Moderate",
+    "voltage": 306.0,
+    "temperature": 29.9,
+    "internalResistance": 0.1088,
+    "odometerKm": 8742,
+    "rulCycles": 237,
+    "socPct": 80.0
+  },
+  {
+    "id": "EV-055",
+    "model": "Tata Tigor EV",
+    "region": "Pune",
+    "owner": "R. Karthik",
+    "capacityKwh": 30.2,
+    "cycle": 44,
+    "capacityPct": 90.6,
+    "health": "Healthy",
+    "voltage": 316.9,
+    "temperature": 36.7,
+    "internalResistance": 0.0985,
+    "odometerKm": 1720,
+    "rulCycles": 96,
+    "socPct": 85.0
+  },
+  {
+    "id": "EV-056",
+    "model": "Tata Tigor EV",
+    "region": "Madurai",
+    "owner": "S. Priya",
+    "capacityKwh": 30.2,
+    "cycle": 138,
+    "capacityPct": 70.0,
+    "health": "Critical",
+    "voltage": 244.2,
+    "temperature": 39.5,
+    "internalResistance": 0.144,
+    "odometerKm": 7595,
+    "rulCycles": 0,
+    "socPct": 67.0
+  },
+  {
+    "id": "EV-057",
+    "model": "Hyundai Kona",
+    "region": "Hyderabad",
+    "owner": "M. Arun",
+    "capacityKwh": 50.0,
+    "cycle": 128,
+    "capacityPct": 89.1,
+    "health": "Moderate",
+    "voltage": 313.5,
+    "temperature": 22.2,
+    "internalResistance": 0.1049,
+    "odometerKm": 6665,
+    "rulCycles": 225,
+    "socPct": 59.0
+  },
+  {
+    "id": "EV-058",
+    "model": "Tata Tigor EV",
+    "region": "Bengaluru",
+    "owner": "V. Lakshmi",
+    "capacityKwh": 50.0,
+    "cycle": 225,
+    "capacityPct": 66.8,
+    "health": "Critical",
+    "voltage": 230.6,
+    "temperature": 36.2,
+    "internalResistance": 0.1482,
+    "odometerKm": 11713,
+    "rulCycles": 0,
+    "socPct": 93.0
+  },
+  {
+    "id": "EV-059",
+    "model": "Hyundai Kona",
+    "region": "Coimbatore",
+    "owner": "K. Suresh",
+    "capacityKwh": 34.5,
+    "cycle": 232,
+    "capacityPct": 80.2,
+    "health": "Moderate",
+    "voltage": 281.3,
+    "temperature": 27.2,
+    "internalResistance": 0.1218,
+    "odometerKm": 9385,
+    "rulCycles": 119,
+    "socPct": 83.0
+  },
+  {
+    "id": "EV-060",
+    "model": "Tata Nexon EV",
+    "region": "Coimbatore",
+    "owner": "A. Divya",
+    "capacityKwh": 50.0,
+    "cycle": 255,
+    "capacityPct": 77.7,
+    "health": "Degraded",
+    "voltage": 270.3,
+    "temperature": 25.2,
+    "internalResistance": 0.1242,
+    "odometerKm": 10000,
+    "rulCycles": 88,
+    "socPct": 36.0
+  }
+]
+</script>
+
+<script>
+/* ============================================================
+   DATA
+   ============================================================ */
+const FLEET = JSON.parse(document.getElementById('fleet-data').textContent);
+
+const HEALTH_COLORS = {
+  Healthy:  { fg: '#2F9E68', bg: '#E3F5EA' },
+  Moderate: { fg: '#3F7FBF', bg: '#E6EEF9' },
+  Degraded: { fg: '#D98C2B', bg: '#FBEFDC' },
+  Critical: { fg: '#D6553F', bg: '#FBE6E2' },
+};
+
+/* ============================================================
+   NAVIGATION
+   ============================================================ */
+function goToPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  document.querySelector(`.nav-item[data-page="${name}"]`).classList.add('active');
+}
+document.querySelectorAll('.nav-item').forEach(btn => {
+  btn.addEventListener('click', () => goToPage(btn.dataset.page));
+});
+
+/* ============================================================
+   BADGE HELPER
+   ============================================================ */
+function badge(health) {
+  return `<span class="badge badge-${health}"><span class="badge-dot"></span>${health}</span>`;
+}
+
+/* ============================================================
+   RING GAUGE (SVG)
+   ============================================================ */
+function ringGauge(pct, health, size = 90, strokeWidth = 9) {
+  const radius = size / 2 - strokeWidth;
+  const circumference = 2 * Math.PI * radius;
+  const offset = circumference - (Math.max(0, Math.min(100, pct)) / 100) * circumference;
+  const color = (HEALTH_COLORS[health] || { fg: '#999' }).fg;
+  return `
+    <div class="ring-wrap" style="width:${size}px;height:${size}px;">
+      <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" style="transform:rotate(-90deg);">
+        <circle cx="${size/2}" cy="${size/2}" r="${radius}" fill="none" stroke="#EEF1EA" stroke-width="${strokeWidth}"/>
+        <circle cx="${size/2}" cy="${size/2}" r="${radius}" fill="none" stroke="${color}" stroke-width="${strokeWidth}"
+          stroke-dasharray="${circumference}" stroke-dashoffset="${offset}" stroke-linecap="round"/>
+      </svg>
+      <div class="ring-label" style="font-size:${size/4.4}px;">
+        <span class="ring-value">${Math.round(pct)}<span class="ring-unit">%</span></span>
+      </div>
+    </div>`;
+}
+
+/* ============================================================
+   OVERVIEW PAGE
+   ============================================================ */
+function renderOverview() {
+  const total = FLEET.length;
+  const counts = { Healthy: 0, Moderate: 0, Degraded: 0, Critical: 0 };
+  let capSum = 0, rulSum = 0;
+  FLEET.forEach(v => { counts[v.health]++; capSum += v.capacityPct; rulSum += v.rulCycles; });
+  const avgCap = (capSum / total).toFixed(1);
+  const avgRul = Math.round(rulSum / total);
+  const openAlerts = buildAlerts().filter(a => !a.resolved).length;
+  const dueMaintenance = counts.Degraded + counts.Critical;
+
+  document.getElementById('kpi-grid').innerHTML = `
+    <div class="kpi-card">
+      <div class="kpi-label">Fleet size</div>
+      <div class="kpi-value">${total}</div>
+      <div class="kpi-sub">vehicles monitored</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Avg capacity</div>
+      <div class="kpi-value" style="color:var(--brand)">${avgCap}%</div>
+      <div class="kpi-sub">across the fleet</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Open alerts</div>
+      <div class="kpi-value" style="color:${openAlerts > 0 ? 'var(--accent)' : 'var(--text-primary)'}">${openAlerts}</div>
+      <div class="kpi-sub">need a look</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Due for service</div>
+      <div class="kpi-value">${dueMaintenance}</div>
+      <div class="kpi-sub">vehicles</div>
+    </div>
+  `;
+
+  // Donut (pure CSS conic-gradient, no library needed)
+  const order = ['Healthy', 'Moderate', 'Degraded', 'Critical'];
+  let acc = 0;
+  const stops = order.map(k => {
+    const pct = (counts[k] / total) * 100;
+    const start = acc; acc += pct;
+    return `${HEALTH_COLORS[k].fg} ${start}% ${acc}%`;
+  }).join(', ');
+
+  document.getElementById('health-donut-wrap').innerHTML = `
+    <div style="width:140px;height:140px;border-radius:50%;background:conic-gradient(${stops}); position:relative; flex-shrink:0;">
+      <div style="position:absolute;inset:24px;background:var(--bg-card);border-radius:50%;display:flex;align-items:center;justify-content:center;flex-direction:column;">
+        <div style="font-size:22px;font-weight:800;">${total}</div>
+        <div style="font-size:10.5px;color:var(--text-tertiary);">vehicles</div>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:10px;">
+      ${order.map(k => `
+        <div style="display:flex;align-items:center;gap:8px;font-size:13.5px;">
+          <span style="width:9px;height:9px;border-radius:50%;background:${HEALTH_COLORS[k].fg};"></span>
+          <span style="color:var(--text-secondary); min-width:75px;">${k}</span>
+          <span style="font-weight:700;">${counts[k]}</span>
+        </div>`).join('')}
+    </div>
+  `;
+
+  // Region bars
+  const regions = {};
+  FLEET.forEach(v => {
+    if (!regions[v.region]) regions[v.region] = [];
+    regions[v.region].push(v.capacityPct);
+  });
+  const regionAvgs = Object.entries(regions).map(([r, vals]) => ({
+    region: r, avg: vals.reduce((a, b) => a + b, 0) / vals.length,
+  })).sort((a, b) => b.avg - a.avg);
+  const maxAvg = Math.max(...regionAvgs.map(r => r.avg));
+
+  document.getElementById('region-bars').innerHTML = regionAvgs.map(r => `
+    <div class="region-bar-row">
+      <div class="region-bar-label">${r.region}</div>
+      <div class="region-bar-track"><div class="region-bar-fill" style="width:${(r.avg / 100) * 100}%; background: ${r.avg > 85 ? 'var(--healthy)' : r.avg > 78 ? 'var(--moderate)' : 'var(--degraded)'};"></div></div>
+      <div class="region-bar-value">${r.avg.toFixed(1)}%</div>
+    </div>
+  `).join('');
+
+  // Priority table — worst 5
+  const worst5 = [...FLEET].sort((a, b) => a.capacityPct - b.capacityPct).slice(0, 5);
+  document.getElementById('priority-table-body').innerHTML = worst5.map(v => `
+    <tr class="clickable" onclick="openDetail('${v.id}')">
+      <td style="font-weight:700;">${v.id}</td>
+      <td>${v.model}</td>
+      <td>${v.region}</td>
+      <td>${v.capacityPct}%</td>
+      <td>${v.rulCycles} cycles</td>
+      <td>${badge(v.health)}</td>
+    </tr>
+  `).join('');
+}
+
+/* ============================================================
+   ALERTS — derived from fleet data, deterministic
+   ============================================================ */
+let _alertCache = null;
+function buildAlerts() {
+  if (_alertCache) return _alertCache;
+  const alerts = [];
+  FLEET.forEach(v => {
+    if (v.health === 'Critical') {
+      alerts.push({ id: v.id + '-crit', vehicle: v.id, severity: 'Critical', type: 'Critical battery health',
+        message: `Battery capacity has dropped to ${v.capacityPct}%. Replacement recommended.`, resolved: false });
+    } else if (v.health === 'Degraded') {
+      alerts.push({ id: v.id + '-deg', vehicle: v.id, severity: 'Medium', type: 'Degraded battery health',
+        message: `Battery is wearing faster than the fleet average. About ${v.rulCycles} cycles of life left — schedule a check.`, resolved: false });
+    }
+    if (v.internalResistance > 0.13) {
+      alerts.push({ id: v.id + '-anom', vehicle: v.id, severity: 'High', type: 'Unusual sensor reading',
+        message: `Internal resistance (${v.internalResistance}Ω) is higher than expected for this vehicle's age — worth a diagnostic check.`, resolved: false });
+    }
+  });
+  _alertCache = alerts;
+  return alerts;
+}
+
+function renderAlerts() {
+  const alerts = buildAlerts();
+  document.getElementById('alert-count-label').textContent = `${alerts.length} open issues`;
+  if (alerts.length === 0) {
+    document.getElementById('alerts-list').innerHTML = `<div class="result-empty">No alerts right now — fleet looks quiet.</div>`;
+    return;
+  }
+  document.getElementById('alerts-list').innerHTML = alerts.map(a => `
+    <div class="alert-item">
+      <div class="alert-left">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span style="font-weight:700; font-size:13px;">${a.vehicle}</span>
+          <span class="badge badge-${a.severity === 'Critical' ? 'Critical' : a.severity === 'High' ? 'Degraded' : 'Medium'}">${a.severity}</span>
+          <span style="font-size:11.5px; color:var(--text-tertiary);">${a.type}</span>
+        </div>
+        <div class="alert-msg">${a.message}</div>
+      </div>
+      <button class="btn btn-soft btn-sm" onclick="openDetail('${a.vehicle}')">View vehicle</button>
+    </div>
+  `).join('');
+}
+
+/* ============================================================
+   VEHICLES PAGE
+   ============================================================ */
+let activeFilter = 'All';
+function renderVehicleFilters() {
+  const options = ['All', 'Healthy', 'Moderate', 'Degraded', 'Critical'];
+  document.getElementById('vehicle-filter-chips').innerHTML = options.map(o => `
+    <button class="chip ${activeFilter === o ? 'active' : ''}" onclick="setFilter('${o}')">${o}</button>
+  `).join('');
+}
+function setFilter(f) { activeFilter = f; renderVehicleFilters(); renderVehicleGrid(); }
+
+function renderVehicleGrid() {
+  const list = activeFilter === 'All' ? FLEET : FLEET.filter(v => v.health === activeFilter);
+  document.getElementById('vehicle-grid').innerHTML = list.map(v => `
+    <div class="vehicle-card" onclick="openDetail('${v.id}')">
+      <div class="vehicle-card-top">
+        <div>
+          <div class="vehicle-id">${v.id}</div>
+          <div class="vehicle-model">${v.model}</div>
+        </div>
+        ${badge(v.health)}
+      </div>
+      <div class="vehicle-stats">
+        <div style="font-size:12px; color:var(--text-secondary);">${v.region}<br><span style="font-size:11px;color:var(--text-tertiary);">${v.rulCycles} cycles left</span></div>
+        ${ringGauge(v.capacityPct, v.health, 56, 6)}
+      </div>
+    </div>
+  `).join('');
+}
+
+/* ============================================================
+   VEHICLE DETAIL DRAWER
+   ============================================================ */
+function openDetail(id) {
+  const v = FLEET.find(x => x.id === id);
+  if (!v) return;
+  document.getElementById('detail-drawer').innerHTML = `
+    <div class="drawer-head">
+      <div>
+        <div style="font-size:18px; font-weight:800;">${v.id}</div>
+        <div style="font-size:13px; color:var(--text-secondary); margin-top:2px;">${v.model} · ${v.region}</div>
+      </div>
+      <button class="drawer-close" onclick="closeDrawer()">✕</button>
+    </div>
+    <div style="display:flex; justify-content:center; margin-bottom:18px;">
+      ${ringGauge(v.capacityPct, v.health, 120, 11)}
+    </div>
+    <div style="display:flex; justify-content:center; margin-bottom:18px;">${badge(v.health)}</div>
+    <div class="detail-row"><span>Owner</span><span>${v.owner}</span></div>
+    <div class="detail-row"><span>Pack size</span><span>${v.capacityKwh} kWh</span></div>
+    <div class="detail-row"><span>Charge cycles so far</span><span>${v.cycle}</span></div>
+    <div class="detail-row"><span>Estimated cycles remaining</span><span>${v.rulCycles}</span></div>
+    <div class="detail-row"><span>Odometer</span><span>${v.odometerKm.toLocaleString()} km</span></div>
+    <div class="detail-row"><span>Last voltage reading</span><span>${v.voltage} V</span></div>
+    <div class="detail-row"><span>Last temperature</span><span>${v.temperature}°C</span></div>
+    <div class="detail-row"><span>Internal resistance</span><span>${v.internalResistance} Ω</span></div>
+    <div class="detail-row"><span>State of charge</span><span>${v.socPct}%</span></div>
+  `;
+  document.getElementById('detail-overlay').classList.add('active');
+}
+function closeDrawer() { document.getElementById('detail-overlay').classList.remove('active'); }
+function closeDrawerOnBackdrop(e) { if (e.target.id === 'detail-overlay') closeDrawer(); }
+
+/* ============================================================
+   ANALYTICS PAGE
+   ============================================================ */
+function renderAnalytics() {
+  const worst = [...FLEET].sort((a, b) => a.capacityPct - b.capacityPct).slice(0, 8);
+  const best = [...FLEET].sort((a, b) => b.capacityPct - a.capacityPct).slice(0, 8);
+
+  const rowsHtml = (list) => list.map(v => `
+    <tr class="clickable" onclick="openDetail('${v.id}')">
+      <td style="font-weight:700;">${v.id}</td>
+      <td>${v.capacityPct}%</td>
+      <td>${badge(v.health)}</td>
+    </tr>`).join('');
+
+  document.getElementById('worst-table').innerHTML = rowsHtml(worst);
+  document.getElementById('best-table').innerHTML = rowsHtml(best);
+
+  const models = {};
+  FLEET.forEach(v => {
+    if (!models[v.model]) models[v.model] = [];
+    models[v.model].push(v.capacityPct);
+  });
+  const modelAvgs = Object.entries(models).map(([m, vals]) => ({
+    model: m, avg: vals.reduce((a, b) => a + b, 0) / vals.length, count: vals.length,
+  })).sort((a, b) => b.avg - a.avg);
+
+  document.getElementById('model-bars').innerHTML = modelAvgs.map(m => `
+    <div class="region-bar-row">
+      <div class="region-bar-label" style="width:150px;">${m.model}</div>
+      <div class="region-bar-track"><div class="region-bar-fill" style="width:${m.avg}%; background: ${m.avg > 85 ? 'var(--healthy)' : m.avg > 78 ? 'var(--moderate)' : 'var(--degraded)'};"></div></div>
+      <div class="region-bar-value">${m.avg.toFixed(1)}%</div>
+    </div>
+  `).join('');
+}
+
+/* ============================================================
+   PREDICT PAGE — simplified scoring logic, runs entirely client-side
+   ============================================================ */
+const SLIDER_DEFS = [
+  { key: 'voltage', label: 'Voltage', unit: 'V', min: 200, max: 400, step: 1, value: 350 },
+  { key: 'temperature', label: 'Temperature', unit: '°C', min: 10, max: 55, step: 0.5, value: 28 },
+  { key: 'internalResistance', label: 'Internal resistance', unit: 'Ω', min: 0.07, max: 0.2, step: 0.001, value: 0.095 },
+  { key: 'soc', label: 'State of charge', unit: '%', min: 0, max: 100, step: 1, value: 70 },
+  { key: 'depthOfDischarge', label: 'Depth of discharge', unit: '%', min: 0, max: 100, step: 1, value: 55 },
+  { key: 'cycle', label: 'Charge cycles so far', unit: '', min: 1, max: 1200, step: 1, value: 150 },
+];
+const sliderState = {};
+SLIDER_DEFS.forEach(s => sliderState[s.key] = s.value);
+
+function renderPredictSliders() {
+  document.getElementById('predict-sliders').innerHTML = SLIDER_DEFS.map(s => `
+    <div class="slider-row">
+      <div class="slider-label">
+        <span>${s.label}</span>
+        <span class="slider-value" id="val-${s.key}">${s.value}${s.unit}</span>
+      </div>
+      <input type="range" id="slider-${s.key}" min="${s.min}" max="${s.max}" step="${s.step}" value="${s.value}"
+        oninput="onSliderChange('${s.key}', this.value, '${s.unit}')">
+    </div>
+  `).join('');
+}
+function onSliderChange(key, value, unit) {
+  sliderState[key] = parseFloat(value);
+  document.getElementById('val-' + key).textContent = value + unit;
+  runPrediction();
+}
+
+function scoreFromInputs() {
+  // Simplified, transparent rule-based scoring standing in for the trained model.
+  const { voltage, temperature, internalResistance, soc, depthOfDischarge, cycle } = sliderState;
+  const fastCharge = document.getElementById('fastChargeToggle').checked;
+
+  // Estimate capacity-equivalent score (0-100) from inputs
+  let score = 100;
+  score -= Math.max(0, (internalResistance - 0.08)) * 400;     // higher resistance = more worn
+  score -= Math.max(0, (temperature - 30)) * 0.6;               // heat accelerates wear
+  score -= Math.max(0, (cycle - 100)) * 0.035;                  // age
+  score -= fastCharge ? 4 : 0;
+  score -= Math.max(0, (depthOfDischarge - 70)) * 0.15;
+  score = Math.max(40, Math.min(99, score));
+
+  let health;
+  if (score >= 90) health = 'Healthy';
+  else if (score >= 80) health = 'Moderate';
+  else if (score >= 70) health = 'Degraded';
+  else health = 'Critical';
+
+  const rul = Math.max(0, Math.round((score - 65) * 9 - cycle * 0.05));
+
+  // Anomaly: voltage inconsistent with SOC, or resistance way out of expected range for given cycle count
+  const expectedResistance = 0.08 + cycle * 0.00007;
+  const isAnomaly = Math.abs(internalResistance - expectedResistance) > 0.025 || (voltage < 260 && soc > 70);
+
+  let recommendation;
+  if (isAnomaly) {
+    recommendation = "This combination of readings looks inconsistent with normal battery behavior — worth a diagnostic check before trusting the other numbers.";
+  } else if (health === 'Critical') {
+    recommendation = "Battery is near end-of-life at these conditions. Replacement would be the recommended next step.";
+  } else if (health === 'Degraded') {
+    recommendation = `Wearing faster than expected. Roughly ${rul} cycles of useful life left — worth scheduling a check soon.`;
+  } else if (health === 'Moderate') {
+    recommendation = fastCharge
+      ? "Aging at a normal pace, but frequent fast-charging will speed that up — worth easing off it when possible."
+      : "Aging normally for this stage of life. No action needed beyond routine monitoring.";
+  } else {
+    recommendation = "Battery is in great shape. No action needed.";
+  }
+
+  return { score, health, rul, isAnomaly, recommendation };
+}
+
+function runPrediction() {
+  const r = scoreFromInputs();
+  const c = HEALTH_COLORS[r.health];
+  document.getElementById('predict-result').innerHTML = `
+    <div class="result-block">
+      ${ringGauge(r.score, r.health, 110, 10)}
+      ${badge(r.health)}
+      <div class="stat-pair">
+        <div class="stat-box">
+          <div class="stat-box-label">Estimated health score</div>
+          <div class="stat-box-value">${Math.round(r.score)}/100</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-box-label">Est. cycles remaining</div>
+          <div class="stat-box-value">${r.rul}</div>
+        </div>
+      </div>
+      ${r.isAnomaly ? `<div class="anomaly-box"><span>⚠️</span><span>${r.recommendation}</span></div>` : ''}
+      ${!r.isAnomaly ? `<div class="recommendation-box">${r.recommendation}</div>` : ''}
+    </div>
+  `;
+}
+
+/* ============================================================
+   INTEGRATION PAGE
+   ============================================================ */
+function renderIntegrationSteps() {
+  const steps = [
+    { n: '1', t: 'Battery Management System (BMS)', d: 'Every EV already has a BMS measuring voltage, current, temperature, and cell-level data many times per second. This is hardware that comes with the car — nothing to build here.' },
+    { n: '2', t: 'Get the readings off the vehicle', d: 'The car needs a way to send that data somewhere — usually through its built-in cellular connection, a fleet telematics device, or the manufacturer\'s own connected-car platform.' },
+    { n: '3', t: 'Land it in a database', d: 'Readings arrive as a stream of numbers tagged with a vehicle ID and timestamp, and get stored — this is the same shape of data this dashboard is showing, just real instead of sample.' },
+    { n: '4', t: 'Score each reading', d: 'A model trained on real historical battery data (not the simplified slider logic on the Predict tab) looks at each new reading and estimates health, remaining life, and whether anything looks abnormal.' },
+    { n: '5', t: 'Show it on a dashboard like this one', d: 'The scored results feed a dashboard — this page, or a more production version of it — so a fleet manager can see at a glance which vehicles need attention.' },
+  ];
+  document.getElementById('integration-steps').innerHTML = steps.map(s => `
+    <div style="display:flex; gap:14px; margin-bottom:16px;">
+      <div style="width:30px; height:30px; border-radius:50%; background:var(--brand-soft); color:var(--brand); display:flex; align-items:center; justify-content:center; font-weight:800; font-size:13px; flex-shrink:0;">${s.n}</div>
+      <div>
+        <div style="font-weight:700; font-size:13.5px; margin-bottom:3px;">${s.t}</div>
+        <div style="font-size:13px; color:var(--text-secondary); line-height:1.5;">${s.d}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+/* ============================================================
+   INIT
+   ============================================================ */
+renderOverview();
+renderAlerts();
+renderVehicleFilters();
+renderVehicleGrid();
+renderAnalytics();
+renderPredictSliders();
+runPrediction();
+renderIntegrationSteps();
+</script>
+</body>
+</html>
