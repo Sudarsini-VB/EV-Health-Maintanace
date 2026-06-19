@@ -1,0 +1,1131 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>My EV — Vehicle Dashboard</title>
+<style>
+  :root {
+    --bg: #F5F7F6;
+    --bg-card: #FFFFFF;
+    --bg-soft: #EEF2EF;
+    --line: #E3E8E4;
+    --text-primary: #1E2A24;
+    --text-secondary: #5C6B62;
+    --text-tertiary: #92A097;
+
+    --brand: #1E8E6F;
+    --brand-dark: #166B54;
+    --brand-soft: #E2F3EC;
+    --accent: #F0A23B;
+    --accent-soft: #FDF0DD;
+
+    --good: #2FA06A;
+    --good-soft: #E4F6EC;
+    --warn: #E0A23B;
+    --warn-soft: #FCF1DC;
+    --bad: #E15B45;
+    --bad-soft: #FCE6E1;
+    --info: #4279C7;
+    --info-soft: #E8F0FC;
+
+    --radius-sm: 10px;
+    --radius-md: 16px;
+    --radius-lg: 22px;
+    --shadow: 0 1px 2px rgba(20,30,24,0.04), 0 8px 24px rgba(20,30,24,0.06);
+    --font: 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--text-primary); font-family: var(--font); }
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-thumb { background: var(--line); border-radius: 4px; }
+  button { font-family: inherit; }
+
+  #app { max-width: 980px; margin: 0 auto; padding: 24px 20px 60px; }
+
+  /* ---------- Top bar ---------- */
+  .topbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 22px; }
+  .topbar-left { display: flex; align-items: center; gap: 12px; }
+  .car-emoji { width: 44px; height: 44px; border-radius: 14px; background: var(--brand-soft); display: flex; align-items: center; justify-content: center; font-size: 22px; }
+  .veh-name { font-weight: 800; font-size: 17px; }
+  .veh-sub { font-size: 12px; color: var(--text-tertiary); }
+  .reg-pill { background: var(--bg-soft); padding: 6px 12px; border-radius: 999px; font-size: 12px; font-weight: 700; color: var(--text-secondary); letter-spacing: 0.03em; }
+
+  /* ---------- Hero status card ---------- */
+  .hero {
+    background: linear-gradient(135deg, var(--brand) 0%, var(--brand-dark) 100%);
+    border-radius: var(--radius-lg); padding: 26px 28px; color: white; margin-bottom: 18px;
+    display: flex; justify-content: space-between; align-items: center; gap: 24px; flex-wrap: wrap;
+    box-shadow: 0 12px 30px rgba(30,107,84,0.25);
+  }
+  .hero-left { display: flex; align-items: center; gap: 22px; }
+  .hero-ring-wrap { position: relative; width: 116px; height: 116px; flex-shrink: 0; }
+  .hero-ring-label { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  .hero-ring-pct { font-size: 28px; font-weight: 800; line-height: 1; }
+  .hero-ring-sub { font-size: 10.5px; opacity: 0.85; margin-top: 2px; }
+  .hero-stats { display: flex; flex-direction: column; gap: 4px; }
+  .hero-range { font-size: 26px; font-weight: 800; }
+  .hero-range-label { font-size: 12.5px; opacity: 0.85; }
+  .hero-location { font-size: 12.5px; opacity: 0.9; margin-top: 8px; display: flex; align-items: center; gap: 6px; }
+
+  .hero-right { display: flex; gap: 14px; flex-wrap: wrap; }
+  .hero-mini-stat { background: rgba(255,255,255,0.14); border-radius: var(--radius-md); padding: 12px 16px; min-width: 100px; }
+  .hero-mini-label { font-size: 10.5px; opacity: 0.8; text-transform: uppercase; letter-spacing: 0.04em; }
+  .hero-mini-value { font-size: 18px; font-weight: 800; margin-top: 4px; }
+
+  .charge-btn {
+    background: white; color: var(--brand-dark); border: none; border-radius: 999px; padding: 11px 20px;
+    font-weight: 700; font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 7px;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.12); transition: transform 0.12s;
+  }
+  .charge-btn:hover { transform: translateY(-1px); }
+  .charge-btn.charging { background: var(--accent); color: white; }
+
+  /* ---------- Tabs ---------- */
+  .tabs { display: flex; gap: 6px; margin-bottom: 18px; flex-wrap: wrap; }
+  .tab {
+    padding: 9px 16px; border-radius: 999px; font-size: 13px; font-weight: 700; cursor: pointer;
+    border: 1px solid var(--line); background: var(--bg-card); color: var(--text-secondary); transition: all 0.15s;
+  }
+  .tab.active { background: var(--brand); color: white; border-color: var(--brand); }
+  .tab .tab-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--bad); margin-left: 6px; }
+
+  .tabpage { display: none; flex-direction: column; gap: 16px; }
+  .tabpage.active { display: flex; }
+
+  /* ---------- Cards ---------- */
+  .card { background: var(--bg-card); border: 1px solid var(--line); border-radius: var(--radius-lg); box-shadow: var(--shadow); padding: 20px; }
+  .card-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+  .card-title { font-size: 14.5px; font-weight: 800; }
+  .card-eyebrow { font-size: 10.5px; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 2px; }
+  .card-sub { font-size: 12.5px; color: var(--text-secondary); margin-top: 2px; }
+
+  .grid-2 { display: grid; grid-template-columns: 1.1fr 1fr; gap: 16px; }
+
+  /* ---------- Badges ---------- */
+  .badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 11px; border-radius: 999px; font-size: 11.5px; font-weight: 700; }
+  .badge-dot { width: 6px; height: 6px; border-radius: 50%; }
+  .badge-good { background: var(--good-soft); color: var(--good); } .badge-good .badge-dot { background: var(--good); }
+  .badge-warn { background: var(--warn-soft); color: var(--warn); } .badge-warn .badge-dot { background: var(--warn); }
+  .badge-bad { background: var(--bad-soft); color: var(--bad); } .badge-bad .badge-dot { background: var(--bad); }
+  .badge-info { background: var(--info-soft); color: var(--info); } .badge-info .badge-dot { background: var(--info); }
+
+  /* ---------- Lists (trips / charges / alerts) ---------- */
+  .list-row {
+    display: flex; justify-content: space-between; align-items: center; gap: 14px;
+    padding: 13px 0; border-bottom: 1px solid var(--line);
+  }
+  .list-row:last-child { border-bottom: none; }
+  .list-left { display: flex; align-items: center; gap: 12px; }
+  .list-icon { width: 38px; height: 38px; border-radius: 11px; background: var(--bg-soft); display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
+  .list-title { font-size: 13.5px; font-weight: 700; }
+  .list-meta { font-size: 11.5px; color: var(--text-tertiary); margin-top: 1px; }
+  .list-right { text-align: right; flex-shrink: 0; }
+  .list-value { font-size: 13.5px; font-weight: 700; }
+  .list-value-sub { font-size: 11px; color: var(--text-tertiary); }
+
+  /* ---------- Health chart (simple SVG line) ---------- */
+  .health-chart-wrap { position: relative; }
+
+  /* ---------- Alert card ---------- */
+  .alert-card { display: flex; gap: 12px; padding: 14px; border-radius: var(--radius-md); background: var(--bg-soft); margin-bottom: 10px; align-items: flex-start; }
+  .alert-card:last-child { margin-bottom: 0; }
+  .alert-icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+  .alert-title { font-weight: 700; font-size: 13.5px; }
+  .alert-msg { font-size: 13px; color: var(--text-secondary); margin-top: 3px; line-height: 1.45; }
+  .alert-dismiss { background: var(--bg-card); border: 1px solid var(--line); border-radius: 8px; padding: 6px 12px; font-size: 11.5px; font-weight: 700; color: var(--text-secondary); cursor: pointer; flex-shrink: 0; }
+  .alert-dismiss:hover { background: var(--line); }
+
+  /* ---------- Schedule toggle rows ---------- */
+  .schedule-row { display: flex; justify-content: space-between; align-items: center; padding: 14px; border-radius: var(--radius-md); background: var(--bg-soft); margin-bottom: 10px; }
+  .schedule-info { display: flex; flex-direction: column; gap: 2px; }
+  .schedule-label { font-weight: 700; font-size: 13.5px; }
+  .schedule-meta { font-size: 12px; color: var(--text-secondary); }
+  .switch { position: relative; width: 44px; height: 25px; flex-shrink: 0; }
+  .switch input { opacity: 0; width: 0; height: 0; }
+  .slider-bg { position: absolute; cursor: pointer; inset: 0; background: var(--line); border-radius: 999px; transition: 0.2s; }
+  .slider-bg:before { position: absolute; content: ""; height: 19px; width: 19px; left: 3px; bottom: 3px; background: white; border-radius: 50%; transition: 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
+  input:checked + .slider-bg { background: var(--brand); }
+  input:checked + .slider-bg:before { transform: translateX(19px); }
+
+  /* ---------- Buttons ---------- */
+  .btn { display: inline-flex; align-items: center; gap: 6px; padding: 9px 15px; border-radius: var(--radius-sm); font-size: 12.5px; font-weight: 700; border: none; cursor: pointer; }
+  .btn-soft { background: var(--bg-soft); color: var(--text-secondary); }
+  .btn-soft:hover { background: var(--line); }
+  .btn-brand { background: var(--brand); color: white; }
+  .btn-brand:hover { background: var(--brand-dark); }
+
+  /* ---------- Predict / what-if slider section ---------- */
+  .slider-row { margin-bottom: 16px; }
+  .slider-label { display: flex; justify-content: space-between; font-size: 12.5px; color: var(--text-secondary); margin-bottom: 6px; }
+  .slider-value { font-weight: 700; color: var(--text-primary); }
+  input[type=range] { width: 100%; accent-color: var(--accent); height: 5px; }
+
+  .stat-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .stat-box { background: var(--bg-soft); border-radius: var(--radius-md); padding: 12px 14px; text-align: center; }
+  .stat-box-label { font-size: 10.5px; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.04em; }
+  .stat-box-value { font-size: 19px; font-weight: 800; color: var(--brand); margin-top: 3px; }
+
+  .empty-state { text-align: center; color: var(--text-tertiary); font-size: 13px; padding: 30px 10px; }
+
+  @media (max-width: 760px) {
+    .grid-2 { grid-template-columns: 1fr; }
+    .hero { flex-direction: column; align-items: flex-start; }
+    .hero-right { width: 100%; }
+    .hero-mini-stat { flex: 1; }
+  }
+</style>
+</head>
+<body>
+
+<div id="app">
+
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="car-emoji">🚗</div>
+      <div>
+        <div class="veh-name" id="veh-name-label"></div>
+        <div class="veh-sub" id="veh-sub-label"></div>
+      </div>
+    </div>
+    <div class="reg-pill" id="veh-reg-label"></div>
+  </div>
+
+  <!-- ---------- HERO STATUS ---------- -->
+  <div class="hero">
+    <div class="hero-left">
+      <div class="hero-ring-wrap" id="hero-ring"></div>
+      <div class="hero-stats">
+        <div class="hero-range" id="hero-range">—</div>
+        <div class="hero-range-label">estimated range</div>
+        <div class="hero-location" id="hero-location">📍 —</div>
+      </div>
+    </div>
+    <div class="hero-right">
+      <div class="hero-mini-stat">
+        <div class="hero-mini-label">Battery health</div>
+        <div class="hero-mini-value" id="hero-health">—</div>
+      </div>
+      <div class="hero-mini-stat">
+        <div class="hero-mini-label">Odometer</div>
+        <div class="hero-mini-value" id="hero-odo">—</div>
+      </div>
+      <button class="charge-btn" id="charge-toggle-btn" onclick="toggleCharging()">⚡ Start charging</button>
+    </div>
+  </div>
+
+  <!-- ---------- TABS ---------- -->
+  <div class="tabs">
+    <button class="tab active" data-tab="home" onclick="goTab('home')">Home</button>
+    <button class="tab" data-tab="trips" onclick="goTab('trips')">Trips</button>
+    <button class="tab" data-tab="charging" onclick="goTab('charging')">Charging</button>
+    <button class="tab" data-tab="health" onclick="goTab('health')">Battery Health</button>
+    <button class="tab" data-tab="alerts" onclick="goTab('alerts')">Alerts<span id="alert-tab-dot"></span></button>
+    <button class="tab" data-tab="whatif" onclick="goTab('whatif')">What-If Check</button>
+  </div>
+
+  <!-- ---------- HOME TAB ---------- -->
+  <section class="tabpage active" id="tab-home">
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-head"><div><div class="card-eyebrow">This week</div><div class="card-title">Driving summary</div></div></div>
+        <div id="home-summary"></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><div><div class="card-eyebrow">Recent</div><div class="card-title">Last 3 trips</div></div>
+          <button class="btn btn-soft" onclick="goTab('trips')">View all</button>
+        </div>
+        <div id="home-recent-trips"></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-head"><div><div class="card-eyebrow">Needs attention</div><div class="card-title">Top alert</div></div>
+        <button class="btn btn-soft" onclick="goTab('alerts')">View all</button>
+      </div>
+      <div id="home-top-alert"></div>
+    </div>
+  </section>
+
+  <!-- ---------- TRIPS TAB ---------- -->
+  <section class="tabpage" id="tab-trips">
+    <div class="card">
+      <div class="card-head">
+        <div><div class="card-eyebrow">History</div><div class="card-title">All trips</div></div>
+      </div>
+      <div id="trips-list"></div>
+    </div>
+  </section>
+
+  <!-- ---------- CHARGING TAB ---------- -->
+  <section class="tabpage" id="tab-charging">
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-head"><div><div class="card-eyebrow">Automation</div><div class="card-title">Charging schedule</div></div></div>
+        <div id="schedule-list"></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><div><div class="card-eyebrow">History</div><div class="card-title">Recent charging sessions</div></div></div>
+        <div id="charge-sessions-list"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ---------- HEALTH TAB ---------- -->
+  <section class="tabpage" id="tab-health">
+    <div class="card">
+      <div class="card-head">
+        <div><div class="card-eyebrow">Trend</div><div class="card-title">Battery health over time</div></div>
+        <span class="badge badge-good" id="health-current-badge"></span>
+      </div>
+      <div class="health-chart-wrap" id="health-chart"></div>
+      <p class="card-sub" style="margin-top:10px;">Battery health reflects how much of the original capacity is left compared to when the car was new. A gentle, steady decline like this is completely normal.</p>
+    </div>
+  </section>
+
+  <!-- ---------- ALERTS TAB ---------- -->
+  <section class="tabpage" id="tab-alerts">
+    <div class="card">
+      <div class="card-head"><div><div class="card-eyebrow">Open items</div><div class="card-title">Alerts & reminders</div></div></div>
+      <div id="alerts-list"></div>
+    </div>
+  </section>
+
+  <!-- ---------- WHAT-IF TAB ---------- -->
+  <section class="tabpage" id="tab-whatif">
+    <div class="card">
+      <div class="card-head"><div><div class="card-eyebrow">Try it</div><div class="card-title">What if I drive like this?</div></div></div>
+      <p class="card-sub" style="margin-bottom:16px;">Move the sliders to describe a driving habit, and see what it would mean for your battery over time.</p>
+      <div class="grid-2">
+        <div>
+          <div id="whatif-sliders"></div>
+        </div>
+        <div>
+          <div id="whatif-result"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<script id="vehicle-data" type="application/json">
+{
+  "vehicle": {
+    "name": "My Tata Nexon EV",
+    "model": "Tata Nexon EV Max",
+    "regNumber": "TN 59 AB 4521",
+    "owner": "Sudarsini",
+    "purchaseDate": "2023-08-14",
+    "batteryCapacityKwh": 40.5,
+    "color": "Pristine White"
+  },
+  "current": {
+    "socPct": 68,
+    "rangeKm": 211,
+    "odometerKm": 18420,
+    "batteryHealthPct": 91.4,
+    "isCharging": false,
+    "lastChargedAt": "2026-06-17T07:20:00",
+    "currentTempC": 31,
+    "tyreOk": true,
+    "location": "Home \u2014 Salem"
+  },
+  "healthHistory": [
+    {
+      "month": "Dec 2024",
+      "healthPct": 99.6
+    },
+    {
+      "month": "Dec 2024",
+      "healthPct": 99.2
+    },
+    {
+      "month": "Jan 2025",
+      "healthPct": 98.6
+    },
+    {
+      "month": "Mar 2025",
+      "healthPct": 98.2
+    },
+    {
+      "month": "Mar 2025",
+      "healthPct": 97.7
+    },
+    {
+      "month": "Apr 2025",
+      "healthPct": 97.3
+    },
+    {
+      "month": "May 2025",
+      "healthPct": 96.9
+    },
+    {
+      "month": "Jun 2025",
+      "healthPct": 96.4
+    },
+    {
+      "month": "Jul 2025",
+      "healthPct": 96.0
+    },
+    {
+      "month": "Aug 2025",
+      "healthPct": 95.6
+    },
+    {
+      "month": "Sep 2025",
+      "healthPct": 95.2
+    },
+    {
+      "month": "Oct 2025",
+      "healthPct": 94.8
+    },
+    {
+      "month": "Nov 2025",
+      "healthPct": 94.3
+    },
+    {
+      "month": "Dec 2025",
+      "healthPct": 93.7
+    },
+    {
+      "month": "Jan 2026",
+      "healthPct": 93.3
+    },
+    {
+      "month": "Feb 2026",
+      "healthPct": 92.9
+    },
+    {
+      "month": "Mar 2026",
+      "healthPct": 92.4
+    },
+    {
+      "month": "Apr 2026",
+      "healthPct": 91.8
+    },
+    {
+      "month": "May 2026",
+      "healthPct": 91.4
+    }
+  ],
+  "trips": [
+    {
+      "date": "2026-06-17",
+      "time": "08:00 AM",
+      "purpose": "Highway drive",
+      "distanceKm": 40.1,
+      "durationMin": 44,
+      "efficiencyKmPerKwh": 5.9,
+      "energyUsedKwh": 6.8,
+      "odometerAfter": 18379.9
+    },
+    {
+      "date": "2026-06-16",
+      "time": "10:00 PM",
+      "purpose": "Weekend trip",
+      "distanceKm": 30.4,
+      "durationMin": 57,
+      "efficiencyKmPerKwh": 6.1,
+      "energyUsedKwh": 4.98,
+      "odometerAfter": 18349.5
+    },
+    {
+      "date": "2026-06-15",
+      "time": "11:00 PM",
+      "purpose": "Visit family",
+      "distanceKm": 78.3,
+      "durationMin": 143,
+      "efficiencyKmPerKwh": 7.3,
+      "energyUsedKwh": 10.73,
+      "odometerAfter": 18271.2
+    },
+    {
+      "date": "2026-06-15",
+      "time": "11:00 AM",
+      "purpose": "Commute to work",
+      "distanceKm": 37.9,
+      "durationMin": 53,
+      "efficiencyKmPerKwh": 6.0,
+      "energyUsedKwh": 6.32,
+      "odometerAfter": 18233.3
+    },
+    {
+      "date": "2026-06-14",
+      "time": "10:00 AM",
+      "purpose": "Weekend trip",
+      "distanceKm": 22.7,
+      "durationMin": 29,
+      "efficiencyKmPerKwh": 6.9,
+      "energyUsedKwh": 3.29,
+      "odometerAfter": 18210.6
+    },
+    {
+      "date": "2026-06-13",
+      "time": "03:00 AM",
+      "purpose": "City errand",
+      "distanceKm": 67.6,
+      "durationMin": 117,
+      "efficiencyKmPerKwh": 7.3,
+      "energyUsedKwh": 9.26,
+      "odometerAfter": 18085.7
+    },
+    {
+      "date": "2026-06-13",
+      "time": "02:00 PM",
+      "purpose": "Highway drive",
+      "distanceKm": 57.3,
+      "durationMin": 85,
+      "efficiencyKmPerKwh": 6.6,
+      "energyUsedKwh": 8.68,
+      "odometerAfter": 18153.3
+    },
+    {
+      "date": "2026-06-12",
+      "time": "06:00 AM",
+      "purpose": "Commute to work",
+      "distanceKm": 83.6,
+      "durationMin": 105,
+      "efficiencyKmPerKwh": 6.5,
+      "energyUsedKwh": 12.86,
+      "odometerAfter": 18002.1
+    },
+    {
+      "date": "2026-06-11",
+      "time": "09:00 PM",
+      "purpose": "Airport drop",
+      "distanceKm": 50.6,
+      "durationMin": 94,
+      "efficiencyKmPerKwh": 6.7,
+      "energyUsedKwh": 7.55,
+      "odometerAfter": 17951.5
+    },
+    {
+      "date": "2026-06-11",
+      "time": "02:00 AM",
+      "purpose": "City errand",
+      "distanceKm": 7.6,
+      "durationMin": 10,
+      "efficiencyKmPerKwh": 7.8,
+      "energyUsedKwh": 0.97,
+      "odometerAfter": 17943.9
+    },
+    {
+      "date": "2026-06-10",
+      "time": "10:00 AM",
+      "purpose": "Highway drive",
+      "distanceKm": 35.0,
+      "durationMin": 56,
+      "efficiencyKmPerKwh": 7.1,
+      "energyUsedKwh": 4.93,
+      "odometerAfter": 17908.9
+    },
+    {
+      "date": "2026-06-09",
+      "time": "02:00 PM",
+      "purpose": "Visit family",
+      "distanceKm": 10.3,
+      "durationMin": 20,
+      "efficiencyKmPerKwh": 6.5,
+      "energyUsedKwh": 1.58,
+      "odometerAfter": 17898.6
+    },
+    {
+      "date": "2026-06-08",
+      "time": "11:00 AM",
+      "purpose": "City errand",
+      "distanceKm": 9.9,
+      "durationMin": 12,
+      "efficiencyKmPerKwh": 6.6,
+      "energyUsedKwh": 1.5,
+      "odometerAfter": 17888.7
+    },
+    {
+      "date": "2026-06-07",
+      "time": "08:00 AM",
+      "purpose": "Visit family",
+      "distanceKm": 78.8,
+      "durationMin": 132,
+      "efficiencyKmPerKwh": 6.8,
+      "energyUsedKwh": 11.59,
+      "odometerAfter": 17809.9
+    },
+    {
+      "date": "2026-06-06",
+      "time": "03:00 PM",
+      "purpose": "Commute to work",
+      "distanceKm": 6.1,
+      "durationMin": 9,
+      "efficiencyKmPerKwh": 6.2,
+      "energyUsedKwh": 0.98,
+      "odometerAfter": 17803.8
+    },
+    {
+      "date": "2026-06-05",
+      "time": "12:00 AM",
+      "purpose": "Airport drop",
+      "distanceKm": 39.6,
+      "durationMin": 46,
+      "efficiencyKmPerKwh": 6.0,
+      "energyUsedKwh": 6.6,
+      "odometerAfter": 17754.8
+    },
+    {
+      "date": "2026-06-05",
+      "time": "06:00 PM",
+      "purpose": "Grocery run",
+      "distanceKm": 9.4,
+      "durationMin": 12,
+      "efficiencyKmPerKwh": 6.1,
+      "energyUsedKwh": 1.54,
+      "odometerAfter": 17794.4
+    },
+    {
+      "date": "2026-06-04",
+      "time": "06:00 AM",
+      "purpose": "Highway drive",
+      "distanceKm": 54.0,
+      "durationMin": 62,
+      "efficiencyKmPerKwh": 7.9,
+      "energyUsedKwh": 6.84,
+      "odometerAfter": 17700.8
+    },
+    {
+      "date": "2026-06-03",
+      "time": "07:00 AM",
+      "purpose": "Airport drop",
+      "distanceKm": 29.3,
+      "durationMin": 45,
+      "efficiencyKmPerKwh": 6.7,
+      "energyUsedKwh": 4.37,
+      "odometerAfter": 17671.5
+    },
+    {
+      "date": "2026-06-02",
+      "time": "06:00 PM",
+      "purpose": "Grocery run",
+      "distanceKm": 17.7,
+      "durationMin": 32,
+      "efficiencyKmPerKwh": 6.4,
+      "energyUsedKwh": 2.77,
+      "odometerAfter": 17653.8
+    }
+  ],
+  "chargeSessions": [
+    {
+      "date": "2026-06-17",
+      "time": "07:20 AM",
+      "location": "Mall charging point",
+      "startSoc": 20,
+      "endSoc": 83,
+      "kwhAdded": 25.5,
+      "durationMin": 79
+    },
+    {
+      "date": "2026-06-13",
+      "time": "07:20 AM",
+      "location": "Home (Salem)",
+      "startSoc": 32,
+      "endSoc": 86,
+      "kwhAdded": 21.9,
+      "durationMin": 426
+    },
+    {
+      "date": "2026-06-07",
+      "time": "07:20 AM",
+      "location": "Friend's place",
+      "startSoc": 19,
+      "endSoc": 97,
+      "kwhAdded": 31.6,
+      "durationMin": 621
+    },
+    {
+      "date": "2026-06-01",
+      "time": "07:20 AM",
+      "location": "Friend's place",
+      "startSoc": 38,
+      "endSoc": 76,
+      "kwhAdded": 15.4,
+      "durationMin": 278
+    },
+    {
+      "date": "2026-05-27",
+      "time": "07:20 AM",
+      "location": "Friend's place",
+      "startSoc": 27,
+      "endSoc": 87,
+      "kwhAdded": 24.3,
+      "durationMin": 468
+    },
+    {
+      "date": "2026-05-25",
+      "time": "07:20 AM",
+      "location": "Mall charging point",
+      "startSoc": 16,
+      "endSoc": 81,
+      "kwhAdded": 26.3,
+      "durationMin": 98
+    },
+    {
+      "date": "2026-05-23",
+      "time": "07:20 AM",
+      "location": "Office charger",
+      "startSoc": 18,
+      "endSoc": 85,
+      "kwhAdded": 27.1,
+      "durationMin": 249
+    },
+    {
+      "date": "2026-05-17",
+      "time": "07:20 AM",
+      "location": "Home (Salem)",
+      "startSoc": 33,
+      "endSoc": 79,
+      "kwhAdded": 18.6,
+      "durationMin": 365
+    },
+    {
+      "date": "2026-05-11",
+      "time": "07:20 AM",
+      "location": "Home (Salem)",
+      "startSoc": 34,
+      "endSoc": 75,
+      "kwhAdded": 16.6,
+      "durationMin": 279
+    },
+    {
+      "date": "2026-05-09",
+      "time": "07:20 AM",
+      "location": "Office charger",
+      "startSoc": 19,
+      "endSoc": 95,
+      "kwhAdded": 30.8,
+      "durationMin": 274
+    },
+    {
+      "date": "2026-05-05",
+      "time": "07:20 AM",
+      "location": "Highway fast charger - Salem Bypass",
+      "startSoc": 30,
+      "endSoc": 78,
+      "kwhAdded": 19.4,
+      "durationMin": 22
+    },
+    {
+      "date": "2026-05-03",
+      "time": "07:20 AM",
+      "location": "Mall charging point",
+      "startSoc": 29,
+      "endSoc": 90,
+      "kwhAdded": 24.7,
+      "durationMin": 68
+    }
+  ],
+  "schedule": [
+    {
+      "id": 1,
+      "label": "Night charging",
+      "time": "23:00",
+      "days": "Mon-Fri",
+      "targetSoc": 80,
+      "enabled": true
+    },
+    {
+      "id": 2,
+      "label": "Weekend top-up",
+      "time": "08:00",
+      "days": "Sat-Sun",
+      "targetSoc": 90,
+      "enabled": false
+    }
+  ],
+  "alerts": [
+    {
+      "id": 1,
+      "severity": "Medium",
+      "title": "Battery health check due",
+      "message": "It's been 6 months since the last full diagnostic. Booking one helps catch issues early.",
+      "resolved": false
+    },
+    {
+      "id": 2,
+      "severity": "Low",
+      "title": "Tyre rotation suggested",
+      "message": "You've crossed 18,000 km since the last rotation \u2014 rotating tyres evenly extends their life.",
+      "resolved": false
+    },
+    {
+      "id": 3,
+      "severity": "Info",
+      "title": "Software update available",
+      "message": "A new infotainment update (v4.2) is ready to install next time you're home and connected to Wi-Fi.",
+      "resolved": false
+    }
+  ]
+}
+</script>
+
+<script>
+const DATA = JSON.parse(document.getElementById('vehicle-data').textContent);
+let { vehicle, current, healthHistory, trips, chargeSessions, schedule, alerts } = DATA;
+
+/* ============================================================
+   NAVIGATION
+   ============================================================ */
+function goTab(name) {
+  document.querySelectorAll('.tabpage').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  document.querySelector(`.tab[data-tab="${name}"]`).classList.add('active');
+}
+
+/* ============================================================
+   HELPERS
+   ============================================================ */
+function ringGauge(pct, color, size = 116, strokeWidth = 11, bgTrack = 'rgba(255,255,255,0.25)') {
+  const radius = size / 2 - strokeWidth;
+  const circumference = 2 * Math.PI * radius;
+  const offset = circumference - (Math.max(0, Math.min(100, pct)) / 100) * circumference;
+  return `
+    <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" style="transform:rotate(-90deg);">
+      <circle cx="${size/2}" cy="${size/2}" r="${radius}" fill="none" stroke="${bgTrack}" stroke-width="${strokeWidth}"/>
+      <circle cx="${size/2}" cy="${size/2}" r="${radius}" fill="none" stroke="${color}" stroke-width="${strokeWidth}"
+        stroke-dasharray="${circumference}" stroke-dashoffset="${offset}" stroke-linecap="round"
+        style="transition: stroke-dashoffset 0.5s ease;"/>
+    </svg>`;
+}
+
+function timeAgo(dateStr) {
+  const then = new Date(dateStr);
+  const now = new Date('2026-06-17T20:00:00');
+  const diffH = Math.round((now - then) / 36e5);
+  if (diffH < 1) return 'just now';
+  if (diffH < 24) return diffH + 'h ago';
+  return Math.round(diffH / 24) + 'd ago';
+}
+
+/* ============================================================
+   HEADER
+   ============================================================ */
+function renderHeader() {
+  document.getElementById('veh-name-label').textContent = vehicle.name;
+  document.getElementById('veh-sub-label').textContent = `${vehicle.model} · ${vehicle.color}`;
+  document.getElementById('veh-reg-label').textContent = vehicle.regNumber;
+}
+
+/* ============================================================
+   HERO
+   ============================================================ */
+function renderHero() {
+  document.getElementById('hero-ring').innerHTML = `
+    ${ringGauge(current.socPct, 'white', 116, 11)}
+    <div class="hero-ring-label">
+      <div class="hero-ring-pct">${current.socPct}%</div>
+      <div class="hero-ring-sub">battery</div>
+    </div>`;
+  document.getElementById('hero-range').textContent = current.rangeKm + ' km';
+  document.getElementById('hero-location').textContent = '📍 ' + current.location;
+  document.getElementById('hero-health').textContent = current.batteryHealthPct + '%';
+  document.getElementById('hero-odo').textContent = current.odometerKm.toLocaleString() + ' km';
+
+  const btn = document.getElementById('charge-toggle-btn');
+  if (current.isCharging) {
+    btn.textContent = '⚡ Charging… tap to stop';
+    btn.classList.add('charging');
+  } else {
+    btn.textContent = '⚡ Start charging';
+    btn.classList.remove('charging');
+  }
+}
+
+function toggleCharging() {
+  current.isCharging = !current.isCharging;
+  if (current.isCharging) {
+    chargeInterval = setInterval(() => {
+      if (current.socPct < 100) {
+        current.socPct = Math.min(100, current.socPct + 1);
+        current.rangeKm = Math.round((current.socPct / 100) * 320);
+        renderHero();
+      } else {
+        clearInterval(chargeInterval);
+        current.isCharging = false;
+        renderHero();
+      }
+    }, 400);
+  } else {
+    clearInterval(chargeInterval);
+  }
+  renderHero();
+}
+let chargeInterval = null;
+
+/* ============================================================
+   HOME TAB
+   ============================================================ */
+function tripIcon(purpose) {
+  if (purpose.includes('work')) return '💼';
+  if (purpose.includes('Grocery')) return '🛒';
+  if (purpose.includes('Airport')) return '✈️';
+  if (purpose.includes('family')) return '👪';
+  if (purpose.includes('Highway')) return '🛣️';
+  if (purpose.includes('Weekend')) return '🌤️';
+  return '📍';
+}
+
+function renderHome() {
+  const last7 = trips.slice(0, 7);
+  const totalKm = last7.reduce((a, t) => a + t.distanceKm, 0);
+  const totalKwh = last7.reduce((a, t) => a + t.energyUsedKwh, 0);
+  const avgEff = (last7.reduce((a, t) => a + t.efficiencyKmPerKwh, 0) / last7.length).toFixed(1);
+
+  document.getElementById('home-summary').innerHTML = `
+    <div class="stat-pair" style="margin-bottom:10px;">
+      <div class="stat-box"><div class="stat-box-label">Distance driven</div><div class="stat-box-value">${totalKm.toFixed(0)} km</div></div>
+      <div class="stat-box"><div class="stat-box-label">Energy used</div><div class="stat-box-value">${totalKwh.toFixed(1)} kWh</div></div>
+    </div>
+    <div class="stat-pair">
+      <div class="stat-box"><div class="stat-box-label">Avg efficiency</div><div class="stat-box-value">${avgEff}</div><div class="list-value-sub">km / kWh</div></div>
+      <div class="stat-box"><div class="stat-box-label">Trips taken</div><div class="stat-box-value">${last7.length}</div></div>
+    </div>
+  `;
+
+  document.getElementById('home-recent-trips').innerHTML = trips.slice(0, 3).map(t => `
+    <div class="list-row">
+      <div class="list-left">
+        <div class="list-icon">${tripIcon(t.purpose)}</div>
+        <div>
+          <div class="list-title">${t.purpose}</div>
+          <div class="list-meta">${t.date} · ${t.time}</div>
+        </div>
+      </div>
+      <div class="list-right">
+        <div class="list-value">${t.distanceKm} km</div>
+        <div class="list-value-sub">${t.energyUsedKwh} kWh used</div>
+      </div>
+    </div>
+  `).join('');
+
+  const top = alerts.find(a => !a.resolved);
+  document.getElementById('home-top-alert').innerHTML = top ? renderAlertCard(top) : `<div class="empty-state">Nothing needs your attention right now 🎉</div>`;
+}
+
+/* ============================================================
+   TRIPS TAB
+   ============================================================ */
+function renderTrips() {
+  document.getElementById('trips-list').innerHTML = trips.map(t => `
+    <div class="list-row">
+      <div class="list-left">
+        <div class="list-icon">${tripIcon(t.purpose)}</div>
+        <div>
+          <div class="list-title">${t.purpose}</div>
+          <div class="list-meta">${t.date} · ${t.time} · ${t.durationMin} min</div>
+        </div>
+      </div>
+      <div class="list-right">
+        <div class="list-value">${t.distanceKm} km</div>
+        <div class="list-value-sub">${t.efficiencyKmPerKwh} km/kWh</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+/* ============================================================
+   CHARGING TAB
+   ============================================================ */
+function renderSchedule() {
+  document.getElementById('schedule-list').innerHTML = schedule.map(s => `
+    <div class="schedule-row">
+      <div class="schedule-info">
+        <div class="schedule-label">${s.label}</div>
+        <div class="schedule-meta">${s.time} · ${s.days} · charge to ${s.targetSoc}%</div>
+      </div>
+      <label class="switch">
+        <input type="checkbox" ${s.enabled ? 'checked' : ''} onchange="toggleSchedule(${s.id})">
+        <span class="slider-bg"></span>
+      </label>
+    </div>
+  `).join('');
+}
+function toggleSchedule(id) {
+  const item = schedule.find(s => s.id === id);
+  if (item) item.enabled = !item.enabled;
+}
+
+function renderChargeSessions() {
+  document.getElementById('charge-sessions-list').innerHTML = chargeSessions.map(c => `
+    <div class="list-row">
+      <div class="list-left">
+        <div class="list-icon">🔌</div>
+        <div>
+          <div class="list-title">${c.location}</div>
+          <div class="list-meta">${c.date} · ${c.time} · ${c.durationMin} min</div>
+        </div>
+      </div>
+      <div class="list-right">
+        <div class="list-value">${c.startSoc}% → ${c.endSoc}%</div>
+        <div class="list-value-sub">+${c.kwhAdded} kWh</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+/* ============================================================
+   HEALTH TAB — simple inline SVG line chart, no library
+   ============================================================ */
+function renderHealthChart() {
+  const w = 880, h = 220, pad = 36;
+  const values = healthHistory.map(p => p.healthPct);
+  const minV = Math.floor(Math.min(...values)) - 2;
+  const maxV = 100;
+  const stepX = (w - pad * 2) / (values.length - 1);
+
+  const points = values.map((v, i) => {
+    const x = pad + i * stepX;
+    const y = h - pad - ((v - minV) / (maxV - minV)) * (h - pad * 2);
+    return [x, y];
+  });
+
+  const linePath = points.map((p, i) => (i === 0 ? 'M' : 'L') + p[0].toFixed(1) + ',' + p[1].toFixed(1)).join(' ');
+  const areaPath = linePath + ` L${points[points.length-1][0]},${h-pad} L${points[0][0]},${h-pad} Z`;
+
+  const gridLines = [100, 95, 90, 85, 80].filter(v => v >= minV).map(v => {
+    const y = h - pad - ((v - minV) / (maxV - minV)) * (h - pad * 2);
+    return `<line x1="${pad}" y1="${y}" x2="${w-pad}" y2="${y}" stroke="#E3E8E4" stroke-width="1"/>
+            <text x="${pad - 8}" y="${y + 4}" font-size="10.5" fill="#92A097" text-anchor="end">${v}%</text>`;
+  }).join('');
+
+  const labelEvery = Math.ceil(values.length / 7);
+  const xLabels = healthHistory.map((p, i) => {
+    if (i % labelEvery !== 0 && i !== values.length - 1) return '';
+    return `<text x="${points[i][0]}" y="${h - 10}" font-size="10" fill="#92A097" text-anchor="middle">${p.month.split(' ')[0]}</text>`;
+  }).join('');
+
+  const lastPoint = points[points.length - 1];
+
+  document.getElementById('health-chart').innerHTML = `
+    <svg width="100%" height="${h}" viewBox="0 0 ${w} ${h}" preserveAspectRatio="xMidYMid meet">
+      ${gridLines}
+      <path d="${areaPath}" fill="#1E8E6F" opacity="0.08"/>
+      <path d="${linePath}" fill="none" stroke="#1E8E6F" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+      ${points.map(p => `<circle cx="${p[0]}" cy="${p[1]}" r="2.5" fill="#1E8E6F"/>`).join('')}
+      <circle cx="${lastPoint[0]}" cy="${lastPoint[1]}" r="5" fill="#1E8E6F" stroke="white" stroke-width="2"/>
+      ${xLabels}
+    </svg>
+  `;
+
+  const cur = current.batteryHealthPct;
+  const badgeClass = cur >= 90 ? 'good' : cur >= 80 ? 'warn' : 'bad';
+  document.getElementById('health-current-badge').className = `badge badge-${badgeClass}`;
+  document.getElementById('health-current-badge').innerHTML = `<span class="badge-dot"></span>${cur}% of original capacity`;
+}
+
+/* ============================================================
+   ALERTS TAB
+   ============================================================ */
+function alertIcon(severity) {
+  if (severity === 'High' || severity === 'Critical') return '🔴';
+  if (severity === 'Medium') return '🟠';
+  if (severity === 'Low') return '🟡';
+  return 'ℹ️';
+}
+function renderAlertCard(a) {
+  return `
+    <div class="alert-card">
+      <div class="alert-icon">${alertIcon(a.severity)}</div>
+      <div style="flex:1;">
+        <div class="alert-title">${a.title}</div>
+        <div class="alert-msg">${a.message}</div>
+      </div>
+      <button class="alert-dismiss" onclick="dismissAlert(${a.id})">Dismiss</button>
+    </div>
+  `;
+}
+function renderAlerts() {
+  const open = alerts.filter(a => !a.resolved);
+  const dot = document.getElementById('alert-tab-dot');
+  dot.innerHTML = open.length > 0 ? '<span class="tab-dot"></span>' : '';
+  document.getElementById('alerts-list').innerHTML = open.length
+    ? open.map(renderAlertCard).join('')
+    : `<div class="empty-state">All caught up — no open alerts 🎉</div>`;
+}
+function dismissAlert(id) {
+  const a = alerts.find(x => x.id === id);
+  if (a) a.resolved = true;
+  renderAlerts();
+  renderHome();
+}
+
+/* ============================================================
+   WHAT-IF TAB
+   ============================================================ */
+const WHATIF_DEFS = [
+  { key: 'dailyKm', label: 'Average daily driving', unit: ' km', min: 5, max: 150, step: 5, value: 35 },
+  { key: 'fastChargePct', label: 'How often you fast-charge', unit: '%', min: 0, max: 100, step: 5, value: 20 },
+  { key: 'avgTemp', label: 'Typical climate temperature', unit: '°C', min: 15, max: 45, step: 1, value: 32 },
+  { key: 'minSocHabit', label: 'How low you usually let it drop', unit: '%', min: 0, max: 50, step: 5, value: 20 },
+];
+const whatifState = {};
+WHATIF_DEFS.forEach(s => whatifState[s.key] = s.value);
+
+function renderWhatifSliders() {
+  document.getElementById('whatif-sliders').innerHTML = WHATIF_DEFS.map(s => `
+    <div class="slider-row">
+      <div class="slider-label"><span>${s.label}</span><span class="slider-value" id="wi-val-${s.key}">${s.value}${s.unit}</span></div>
+      <input type="range" min="${s.min}" max="${s.max}" step="${s.step}" value="${s.value}"
+        oninput="onWhatifChange('${s.key}', this.value, '${s.unit}')">
+    </div>
+  `).join('');
+}
+function onWhatifChange(key, value, unit) {
+  whatifState[key] = parseFloat(value);
+  document.getElementById('wi-val-' + key).textContent = value + unit;
+  runWhatif();
+}
+
+function runWhatif() {
+  const { dailyKm, fastChargePct, avgTemp, minSocHabit } = whatifState;
+  // Simple transparent heuristic: estimate yearly degradation given habits
+  let yearlyDegrade = 1.6; // baseline %, typical for this car size
+  yearlyDegrade += (dailyKm / 35 - 1) * 0.4;
+  yearlyDegrade += (fastChargePct / 20 - 1) * 0.5;
+  yearlyDegrade += Math.max(0, (avgTemp - 30)) * 0.06;
+  yearlyDegrade += Math.max(0, (20 - minSocHabit)) * 0.03;
+  yearlyDegrade = Math.max(0.8, yearlyDegrade);
+
+  const projected5yr = Math.max(50, (100 - yearlyDegrade * 5)).toFixed(1);
+  const currentHealth = current.batteryHealthPct;
+  const projectedFromNow = Math.max(50, (currentHealth - yearlyDegrade * 5)).toFixed(1);
+
+  let tip;
+  if (yearlyDegrade < 1.4) tip = "These are great habits — your battery should stay healthy well beyond the typical 8-year warranty.";
+  else if (yearlyDegrade < 2.2) tip = "This is a fairly normal driving pattern. Nothing concerning here.";
+  else tip = "This combination wears the battery faster than average — mainly the frequent fast-charging and high heat exposure. Charging slowly overnight when possible would help.";
+
+  document.getElementById('whatif-result').innerHTML = `
+    <div class="stat-pair" style="margin-bottom:12px;">
+      <div class="stat-box"><div class="stat-box-label">Est. yearly wear</div><div class="stat-box-value">${yearlyDegrade.toFixed(1)}%</div></div>
+      <div class="stat-box"><div class="stat-box-label">Health in 5 years</div><div class="stat-box-value">${projectedFromNow}%</div></div>
+    </div>
+    <div class="alert-card" style="background:var(--brand-soft);">
+      <div class="alert-icon">💡</div>
+      <div><div class="alert-msg" style="color:var(--text-primary);">${tip}</div></div>
+    </div>
+  `;
+}
+
+/* ============================================================
+   INIT
+   ============================================================ */
+renderHeader();
+renderHero();
+renderHome();
+renderTrips();
+renderSchedule();
+renderChargeSessions();
+renderHealthChart();
+renderAlerts();
+renderWhatifSliders();
+runWhatif();
+</script>
+</body>
+</html>
