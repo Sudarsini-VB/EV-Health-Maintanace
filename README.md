@@ -123,6 +123,6 @@ By default the frontend calls the API at `http://localhost:8000`. To point it el
 | Predictions | `POST /api/predict/`, `GET /api/predict/model-metrics` |
 | Fleet analytics | `GET /api/fleet/summary`, `/latest-status`, `/rankings`, `/region-comparison` |
 
-## Explaining this project in an interview
+##Dashboards
 
-Be upfront that you generated training data synthetically rather than from physical hardware, and explain *why* that's a legitimate engineering choice for a portfolio project: public real-world BMS datasets often aren't fleet-scale or aren't freely available, so a physics-informed synthetic generator is the standard substitute used in many published battery research papers. Be ready to explain each model's job in plain terms: classification answers "what state is this battery in," regression answers "how long until it needs replacing," and anomaly detection answers "does this reading look wrong even if we don't have a label for it." Walk through one full request: a telemetry POST triggers `ml_service.predict()`, which scales the input features, runs all three models, and the results get persisted and checked against alert rules — that's the core design decision worth narrating, since it's what makes the system event-driven rather than batch-only.
+EV Fleet health gaurdian
