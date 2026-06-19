@@ -126,3 +126,6 @@ By default the frontend calls the API at `http://localhost:8000`. To point it el
 ##Dashboards
 
 EV Fleet health gaurdian
+
+@ EV Guardian Dashboard.html
+@ 
